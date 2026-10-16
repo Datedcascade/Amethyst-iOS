@@ -2,6 +2,7 @@
 #import "../utils.h"
 
 #include "../glfw_keycodes.h"
+#include "../sdl3_hook.h"
 
 @implementation KeyboardInput
 
@@ -117,6 +118,12 @@ int keycodeTable[UIKeyboardHIDUsageKeyboardRightGUI+1];
     if (isDown && key.characters.length < 11) {
         for (int i = 0; i < key.characters.length; i++) {
             int keychar = [key.characters characterAtIndex:i];
+            if (AmethystSDL3InputActive()) {
+                if (keychar >= 0x20 && keychar != 0x7F) {
+                    CallbackBridge_nativeSendChar(keychar);
+                }
+                continue;
+            }
             CallbackBridge_nativeSendCharMods(keychar, modifiers);
             CallbackBridge_nativeSendChar(keychar);
         }
