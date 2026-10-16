@@ -25,9 +25,9 @@
 #import "MinecraftOptionUtils.h"
 #import "MobileGLConfig.h"
 #import "MoltenVKConfig.h"
+#import "KosmicKrispConfig.h"
 #import "PLLogOutputView.h"
 #import "PLProfiles.h"
-#import "RendererCrashTracker.h"
 #import "ZinkConfig.h"
 
 #define fm NSFileManager.defaultManager
@@ -202,7 +202,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
                                                                        versionId:launchTarget[@"id"]];
         lwjgl = lwjglPick.version;
         if (lwjglPick.warning) {
-            showDialog(localize(@"Warning", nil), lwjglPick.warning);
+            NSLog(@"[LWJGL] %@", lwjglPick.warning);
         }
 
         // Setup AME_RENDERER
@@ -220,22 +220,6 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
         }
 
        
-        NSUInteger consecutiveRendererFailures = [RendererCrashTracker consecutiveFailuresForRenderer:renderer];
-        if (consecutiveRendererFailures >= 2) {
-            NSString *message = [NSString stringWithFormat:localize(@"renderer.crash_fallback.message", nil),
-                                  (unsigned long)consecutiveRendererFailures, renderer];
-            showDialog(localize(@"renderer.crash_fallback.title", nil), message);
-        }
-        [RendererCrashTracker recordLaunchAttemptForRenderer:renderer];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [RendererCrashTracker markLaunchStableForRenderer:renderer];
-        });
-
-        if (getPrefBool(@"debug.debug_verbose_graphics_logging")) {
-            setenv("MVK_CONFIG_LOG_LEVEL", "4", 1);
-            setenv("MVK_DEBUG", "1", 1);
-        }
-
         if (isMobileGLRenderer(renderer.UTF8String)) {
             [MobileGLConfig applyEnvironmentFromPreferences];
             NSLog(@"[MobileGLConfig] %@", [MobileGLConfig activeConfigSummary]);
@@ -244,21 +228,28 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
             unsetenv("MOBILEGL_LOG_FILE_PATH");
         }
 
-        if (ame_renderer_is_vulkan_native(ame_renderer_from_name(renderer.UTF8String))) {
-            // env first, MoltenVK reads its config once on the first call into it
-            [MoltenVKConfig applyEnvironmentFromPreferences];
-            NSString *mvkPath = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Frameworks/libMoltenVK.dylib"];
-            ame_vk_preflight_t pf = ame_vk_preflight(mvkPath.UTF8String);
-            if (pf.ok) {
-                NSLog(@"[MoltenVK] Vulkan %u.%u.%u, %@", pf.apiVersion >> 22, (pf.apiVersion >> 12) & 0x3ff, pf.apiVersion & 0xfff,
-                      [MoltenVKConfig activeConfigSummary]);
+        ame_renderer_t vulkanKind = ame_renderer_from_name(renderer.UTF8String);
+        if (ame_renderer_is_vulkan_native(vulkanKind)) {
+            // env first, the driver reads its config once when it is loaded
+            const char *vulkanFile = ame_vulkan_library_file(vulkanKind);
+            NSString *vulkanPath = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:
+                                    [@"Frameworks/" stringByAppendingString:[NSString stringWithUTF8String:vulkanFile]]];
+            if (vulkanKind == AME_RENDERER_KOSMICKRISP) {
+                [KosmicKrispConfig applyEnvironmentFromPreferences];
             } else {
-                NSLog(@"[MoltenVK] preflight failed: %s", pf.error);
+                [MoltenVKConfig applyEnvironmentFromPreferences];
+            }
+
+            ame_vk_preflight_t pf = ame_vk_preflight(vulkanPath.UTF8String);
+            if (pf.ok) {
+                NSLog(@"[Vulkan] %s Vulkan %u.%u.%u, %@", vulkanFile, pf.apiVersion >> 22, (pf.apiVersion >> 12) & 0x3ff, pf.apiVersion & 0xfff,
+                      vulkanKind == AME_RENDERER_KOSMICKRISP ? [KosmicKrispConfig activeConfigSummary]
+                                                             : [MoltenVKConfig activeConfigSummary]);
+            } else {
+                NSLog(@"[Vulkan] %s preflight failed: %s", vulkanFile, pf.error);
                 vulkanUnavailable = YES;
                 renderer = @"auto";
                 setenv("AME_RENDERER", "auto", 1);
-                showDialog(localize(@"renderer.moltenvk.unavailable.title", nil),
-                           [NSString stringWithFormat:localize(@"renderer.moltenvk.unavailable.message", nil), [NSString stringWithUTF8String:pf.error]]);
             }
         }
 
@@ -405,8 +396,10 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     // read by GLFWVulkan.glfwVulkanSupported, absent means yes
     if (vulkanUnavailable) margv[++margc] = "-Dame.vulkan.available=false";
 
-    // LWJGL's bare libMoltenVK.dylib lookup does not search Frameworks, so give it the bundled path
-    NSString *bundledVulkan = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Frameworks/libMoltenVK.dylib"];
+    // LWJGL's bare dylib lookup does not search Frameworks, so give it the bundled path of the selected driver
+    ame_renderer_t lwjglVulkanKind = ame_renderer_from_name(getenv("AME_RENDERER"));
+    NSString *bundledVulkan = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:
+                               [@"Frameworks/" stringByAppendingString:[NSString stringWithUTF8String:ame_vulkan_library_file(lwjglVulkanKind)]]];
     if ([fm fileExistsAtPath:bundledVulkan]) {
         margv[++margc] = [NSString stringWithFormat:@"-Dame.vulkan.libpath=%@", bundledVulkan].UTF8String;
     }
