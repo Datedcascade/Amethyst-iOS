@@ -125,6 +125,22 @@ void init_loadCustomJvmFlags(int* argc, const char** argv) {
     }
 }
 
+static BOOL versionHasVulkanBackend(NSString *versionId) {
+    if (![versionId isKindOfClass:NSString.class]) return NO;
+    NSRegularExpression *re = [NSRegularExpression regularExpressionWithPattern:@"(?<![\\d.])(\\d{2})\\.(\\d+)" options:0 error:nil];
+    __block BOOL found = NO;
+    [re enumerateMatchesInString:versionId options:0 range:NSMakeRange(0, versionId.length)
+                      usingBlock:^(NSTextCheckingResult *m, NSMatchingFlags f, BOOL *stop) {
+        int major = [versionId substringWithRange:[m rangeAtIndex:1]].intValue;
+        int minor = [versionId substringWithRange:[m rangeAtIndex:2]].intValue;
+        if (major > 26 || (major == 26 && minor >= 2)) {
+            found = YES;
+            *stop = YES;
+        }
+    }];
+    return found;
+}
+
 int launchJVM(NSString *username, id launchTarget, int width, int height, int minVersion) {
     NSLog(@"[JavaLauncher] Beginning JVM launch");
 
@@ -179,6 +195,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     NSString *defaultJRETag;
     AMLWJGLVersion *lwjgl = nil;
     BOOL vulkanUnavailable = NO;
+    BOOL gameHasVulkanBackend = NO;
     NSCAssert(launchTarget, @"Unexpected nil launchTarget");
     if ([launchTarget isKindOfClass:NSDictionary.class]) {
         // Get preferred Java version from current profile
@@ -207,6 +224,10 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
 
         // Setup AME_RENDERER
         NSString *renderer = [PLProfiles resolveKeyForCurrentProfile:@"renderer"];
+        gameHasVulkanBackend = versionHasVulkanBackend(launchTarget[@"id"]) || versionHasVulkanBackend(launchTarget[@"inheritsFrom"]);
+        if (gameHasVulkanBackend && ame_renderer_from_name(renderer.UTF8String) == AME_RENDERER_AUTO) {
+            renderer = @RENDERER_NAME_MOLTENVK;
+        }
         NSLog(@"[JavaLauncher] RENDERER is set to %@\n", renderer);
         setenv("AME_RENDERER", renderer.UTF8String, 1);
 
@@ -320,8 +341,13 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
         return 1;
     }
 
-    // Setup options.txt
-    [MinecraftOptionUtils setupOptionsAtGameDir:gameDir];
+    NSString *graphicsBackend = nil;
+    if (gameHasVulkanBackend) {
+        BOOL vulkanRuns = !vulkanUnavailable && ame_renderer_is_vulkan_native(ame_renderer_from_name(getenv("AME_RENDERER")));
+        graphicsBackend = vulkanRuns ? @"vulkan" : @"opengl";
+        NSLog(@"[JavaLauncher] preferredGraphicsBackend=%@", graphicsBackend);
+    }
+    [MinecraftOptionUtils setupOptionsAtGameDir:gameDir graphicsBackend:graphicsBackend];
     
     int margc = -1;
     const char *margv[1000];

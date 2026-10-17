@@ -8,6 +8,10 @@
 @implementation MinecraftOptionUtils
 
 + (void)setupOptionsAtGameDir:(NSString *)gameDir {
+    [self setupOptionsAtGameDir:gameDir graphicsBackend:nil];
+}
+
++ (void)setupOptionsAtGameDir:(NSString *)gameDir graphicsBackend:(NSString *)graphicsBackend {
     NSAssert(windowWidth > 0 && windowHeight > 0, @"called before setting windowWidth/windowHeight?");
     MinecraftOptionUtils *options = [MinecraftOptionUtils sharedInstance];
     options.optionsPath = [gameDir stringByAppendingPathComponent:@"options.txt"];
@@ -16,6 +20,9 @@
     [options setKey:@"fullscreen" value:@"false"];
     [options setKey:@"overrideWidth" value:@(windowWidth)];
     [options setKey:@"overrideHeight" value:@(windowHeight)];
+    if (graphicsBackend.length) {
+        [options setKey:@"preferredGraphicsBackend" value:[NSString stringWithFormat:@"\"%@\"", graphicsBackend]];
+    }
     // Default settings for performance
     [options setDefaultForKey:@"mipmapLevels" value:@"0"];
     [options setDefaultForKey:@"particles" value:@"1"];
