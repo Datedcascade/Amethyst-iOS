@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <QuartzCore/CAMetalLayer.h>
+#import <GameController/GameController.h>
 #include <dlfcn.h>
 #include <math.h>
 #include <stdint.h>
@@ -655,6 +656,30 @@ static jclass sSDLInputClass = NULL;
 static jmethodID sSDLInputMethod = NULL;
 static volatile bool sSDLInputActive = false;
 
+static void AMDisableSDLNativeKeyboard(void) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        GCKeyboardInput *input = GCKeyboard.coalescedKeyboard.keyboardInput;
+        if (input != nil && input.keyChangedHandler != nil) {
+            input.keyChangedHandler = nil;
+            NSLog(@"[SDL3] removed SDL's own GCKeyboard handler, Amethyst sends the keys");
+        }
+    });
+}
+
+static void AMInstallSDLNativeKeyboardBlock(void) {
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        [NSNotificationCenter.defaultCenter addObserverForName:GCKeyboardDidConnectNotification object:nil queue:nil usingBlock:^(NSNotification *note) {
+            // SDL's own observer sets its handler first, this runs after it
+            AMDisableSDLNativeKeyboard();
+        }];
+    });
+    AMDisableSDLNativeKeyboard();
+    // SDL may still be starting up, catch a handler it installs a moment later
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ AMDisableSDLNativeKeyboard(); });
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 4 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{ AMDisableSDLNativeKeyboard(); });
+}
+
 bool AmethystSDL3InputActive(void) {
     return sSDLInputActive;
 }
@@ -693,6 +718,7 @@ Java_org_lwjgl_sdl_SDL3Bridge_nativeRegisterInput(JNIEnv *env, jclass clazz) {
         return;
     }
     sSDLInputActive = true;
+    AMInstallSDLNativeKeyboardBlock();
     NSLog(@"[SDL3] input bridge active");
 }
 
