@@ -21,7 +21,8 @@
     [options setKey:@"overrideWidth" value:@(windowWidth)];
     [options setKey:@"overrideHeight" value:@(windowHeight)];
     if (graphicsBackend.length) {
-        [options setKey:@"preferredGraphicsBackend" value:[NSString stringWithFormat:@"\"%@\"", graphicsBackend]];
+        // only on first creation of options.txt, never overwrite what the player or a mod (MetalUniversal) set (#44)
+        [options setDefaultForKey:@"preferredGraphicsBackend" value:[NSString stringWithFormat:@"\"%@\"", graphicsBackend]];
     }
     // Default settings for performance
     [options setDefaultForKey:@"mipmapLevels" value:@"0"];

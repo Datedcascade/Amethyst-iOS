@@ -8,6 +8,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (void)setupOptionsAtGameDir:(NSString *)gameDir;
 + (void)setupOptionsAtGameDir:(NSString *)gameDir graphicsBackend:(nullable NSString *)graphicsBackend;
++ (void)setupOptionsAtGameDir:(NSString *)gameDir graphicsBackend:(nullable NSString *)graphicsBackend force:(BOOL)force;
++ (nullable NSString *)savedGraphicsBackendAtGameDir:(NSString *)gameDir;
++ (BOOL)isCustomGraphicsBackend:(nullable NSString *)value;
 + (instancetype)sharedInstance;
 
 - (void)loadFromPath:(NSString *)optionsPath;

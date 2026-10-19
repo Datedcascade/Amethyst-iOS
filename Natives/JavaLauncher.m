@@ -196,6 +196,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     AMLWJGLVersion *lwjgl = nil;
     BOOL vulkanUnavailable = NO;
     BOOL gameHasVulkanBackend = NO;
+    BOOL customGraphicsBackend = NO;
     NSCAssert(launchTarget, @"Unexpected nil launchTarget");
     if ([launchTarget isKindOfClass:NSDictionary.class]) {
         // Get preferred Java version from current profile
@@ -222,10 +223,22 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
             NSLog(@"[LWJGL] %@", lwjglPick.warning);
         }
 
+        // Setup gameDir (needed early, the saved graphics backend decides the renderer below)
+        gameDir = [NSString stringWithFormat:@"%s/instances/%@/%@",
+            getenv("AME_HOME"), getPrefObject(@"general.game_directory"),
+            [PLProfiles resolveKeyForCurrentProfile:@"gameDir"]]
+            .stringByStandardizingPath;
+
         // Setup AME_RENDERER
         NSString *renderer = [PLProfiles resolveKeyForCurrentProfile:@"renderer"];
         gameHasVulkanBackend = versionHasVulkanBackend(launchTarget[@"id"]) || versionHasVulkanBackend(launchTarget[@"inheritsFrom"]);
-        if (gameHasVulkanBackend && ame_renderer_from_name(renderer.UTF8String) == AME_RENDERER_AUTO) {
+        // a backend that is neither default/opengl/vulkan (MetalUniversal's "metal") brings its own
+        // renderer, so Amethyst must not pick one for it or write over the value (#44)
+        customGraphicsBackend = gameHasVulkanBackend && [MinecraftOptionUtils isCustomGraphicsBackend:[MinecraftOptionUtils savedGraphicsBackendAtGameDir:gameDir]];
+        if (customGraphicsBackend) {
+            NSLog(@"[JavaLauncher] custom preferredGraphicsBackend in options.txt, not choosing a renderer for it");
+        }
+        if (gameHasVulkanBackend && !customGraphicsBackend && ame_renderer_from_name(renderer.UTF8String) == AME_RENDERER_AUTO) {
             renderer = @RENDERER_NAME_MOLTENVK;
         }
         NSLog(@"[JavaLauncher] RENDERER is set to %@\n", renderer);
@@ -280,12 +293,6 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
             [NSFileManager.defaultManager createDirectoryAtPath:mgDir withIntermediateDirectories:YES attributes:nil error:nil];
             setenv("MG_DIR_PATH", mgDir.UTF8String, 1);
         }
-
-        // Setup gameDir
-        gameDir = [NSString stringWithFormat:@"%s/instances/%@/%@",
-            getenv("AME_HOME"), getPrefObject(@"general.game_directory"),
-            [PLProfiles resolveKeyForCurrentProfile:@"gameDir"]]
-            .stringByStandardizingPath;
     } else {
         defaultJRETag = @"execute_jar";
         gameDir = @(getenv("GAME_DIR"));
@@ -342,20 +349,22 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     }
 
     NSString *graphicsBackend = nil;
-    if (gameHasVulkanBackend) {
+    BOOL forceGraphicsBackend = NO;
+    if (gameHasVulkanBackend && !customGraphicsBackend) {
         BOOL vulkanRuns = !vulkanUnavailable && ame_renderer_is_vulkan_native(ame_renderer_from_name(getenv("AME_RENDERER")));
         if (vulkanRuns) {
-            // Vulkan-only renderers have no GL to fall back to
+            // only a default for a fresh options.txt, a choice made in-game is kept (#42, #44)
             graphicsBackend = @"vulkan";
         } else if (vulkanUnavailable) {
             // the Vulkan driver failed its preflight, a saved "vulkan" could never start
             graphicsBackend = @"opengl";
+            forceGraphicsBackend = YES;
         }
         // any other renderer (MobileGL, Zink, ...): leave options.txt alone so the in-game
         // Graphics API choice is kept between launches (#42)
         NSLog(@"[JavaLauncher] preferredGraphicsBackend=%@", graphicsBackend ?: @"(untouched)");
     }
-    [MinecraftOptionUtils setupOptionsAtGameDir:gameDir graphicsBackend:graphicsBackend];
+    [MinecraftOptionUtils setupOptionsAtGameDir:gameDir graphicsBackend:graphicsBackend force:forceGraphicsBackend];
     
     int margc = -1;
     const char *margv[1000];
