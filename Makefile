@@ -425,7 +425,15 @@ assets:
 	fi
 	echo '[Amethyst v$(VERSION)] assets - end'
 
-payload: native dep_mg dep_mobilegl dep_mcmetal dep_ame_vulkan java jre assets
+ely_agent:
+	mkdir -p $(SOURCEDIR)/depends
+	curl --fail --location --retry 3 -o $(SOURCEDIR)/depends/authlib-injector.jar.tmp https://github.com/yushijinhun/authlib-injector/releases/download/v1.2.8/authlib-injector-1.2.8.jar
+	echo '9c7f4343e6c82034958ffb48c14a2cb0c85928be7283103ce17da00c6d5a7b10  $(SOURCEDIR)/depends/authlib-injector.jar.tmp' | shasum -a 256 -c -
+	mv $(SOURCEDIR)/depends/authlib-injector.jar.tmp $(SOURCEDIR)/depends/authlib-injector.jar
+
+.PHONY: ely_agent
+
+payload: native dep_mg dep_mobilegl dep_mcmetal dep_ame_vulkan java jre assets ely_agent
 	echo '[Amethyst v$(VERSION)] payload - start'
 	$(call METHOD_DIRCHECK,$(WORKINGDIR)/AngelAuraAmethyst.app/libs)
 	$(call METHOD_DIRCHECK,$(WORKINGDIR)/AngelAuraAmethyst.app/libs_caciocavallo)
@@ -442,6 +450,7 @@ payload: native dep_mg dep_mobilegl dep_mcmetal dep_ame_vulkan java jre assets
 	done
 	cp $(WORKINGDIR)/*.dylib $(WORKINGDIR)/AngelAuraAmethyst.app/Frameworks/ || exit 1
 	cp -R $(SOURCEDIR)/JavaApp/libs/others/* $(WORKINGDIR)/AngelAuraAmethyst.app/libs/ || exit 1
+	cp $(SOURCEDIR)/depends/authlib-injector.jar $(WORKINGDIR)/AngelAuraAmethyst.app/libs/ || exit 1
 	for sub in $(LWJGL_SUBS); do mkdir -p $(WORKINGDIR)/AngelAuraAmethyst.app/libs/$$sub || exit 1; done
 	$(call METHOD_LWJGL_JARS,cp,$(WORKINGDIR)/AngelAuraAmethyst.app)
 	cp -R $(SOURCEDIR)/JavaApp/libs/caciocavallo/* $(WORKINGDIR)/AngelAuraAmethyst.app/libs_caciocavallo || exit 1
