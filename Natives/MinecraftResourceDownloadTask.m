@@ -35,8 +35,6 @@
     if (fileExists && [self checkSHA:sha forFile:path altName:altName]) {
         if (success) success();
         return nil;
-    } else if (![self checkAccessWithDialog:YES]) {
-        return nil;
     }
 
     NSString *name = altName ?: path.lastPathComponent;
@@ -310,19 +308,6 @@
     NSString *errorStr = [NSString stringWithFormat:localize(@"launcher.mcl.error_download", NULL), file, error.localizedDescription];
     NSLog(@"[MCDL] Error: %@ %@", errorStr, NSThread.callStackSymbols);
     [self finishDownloadWithErrorString:errorStr];
-}
-
-// Check if the account has permission to download
-- (BOOL)checkAccessWithDialog:(BOOL)show {
-    // for now
-    BOOL accessible = [BaseAuthenticator.current.authData[@"username"] hasPrefix:@"Demo."] || BaseAuthenticator.current.authData[@"xboxGamertag"] != nil;
-    if (!accessible) {
-        [self.progress cancel];
-        if (show) {
-            [self finishDownloadWithErrorString:@"Minecraft can't be legally installed when logged in with a local account. Please switch to an online account to continue."];
-        }
-    }
-    return accessible;
 }
 
 // Check SHA of the file

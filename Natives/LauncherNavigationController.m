@@ -132,17 +132,18 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         name:@"InstallModpack"
         object:nil];
 
-    if ([BaseAuthenticator.current isKindOfClass:MicrosoftAuthenticator.class]) {
+    if ([BaseAuthenticator.current isKindOfClass:MicrosoftAuthenticator.class] ||
+        [BaseAuthenticator.current isKindOfClass:ElyAuthenticator.class]) {
         // Perform token refreshment on startup
         [self setInteractionEnabled:NO forDownloading:NO];
         id callback = ^(id status, BOOL success) {
-            status = [status description];
-            self.progressText.text = status;
-            if (status == nil) {
-                [self setInteractionEnabled:YES forDownloading:NO];
-            } else if (!success) {
-                showDialog(localize(@"Error", nil), status);
-            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.progressText.text = [status description];
+                if (status == nil || !success) {
+                    [self setInteractionEnabled:YES forDownloading:NO];
+                }
+                if (!success) showDialog(localize(@"Error", nil), [status description]);
+            });
         };
         [BaseAuthenticator.current refreshTokenWithCallback:callback];
     }

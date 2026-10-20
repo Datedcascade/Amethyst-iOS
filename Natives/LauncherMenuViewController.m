@@ -307,8 +307,10 @@
         subtitle = localize(@"login.option.demo", nil);
         setenv("DEMO_LOCK", "1", 1);
         setenv("GAME_DIR", [NSString stringWithFormat:@"%s/.demo", getenv("AME_HOME")].UTF8String, 1);
+    } else if ([selected[@"accountType"] isEqualToString:@"ely"]) {
+        subtitle = @"Ely.by";
     } else if (selected[@"xboxGamertag"] == nil) {
-        subtitle = localize(@"login.option.local", nil);
+        subtitle = localize(@"login.option.offline", nil);
     } else {
         // Display the Xbox gamertag for online accounts
         subtitle = selected[@"xboxGamertag"];

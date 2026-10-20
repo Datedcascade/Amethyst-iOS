@@ -68,8 +68,10 @@
         // Remove the prefix "Demo."
         cell.textLabel.text = [selected[@"username"] substringFromIndex:5];
         cell.detailTextLabel.text = localize(@"login.option.demo", nil);
+    } else if ([selected[@"accountType"] isEqualToString:@"ely"]) {
+        cell.detailTextLabel.text = @"Ely.by";
     } else if (selected[@"xboxGamertag"] == nil) {
-        cell.detailTextLabel.text = localize(@"login.option.local", nil);
+        cell.detailTextLabel.text = localize(@"login.option.offline", nil);
     } else {
         // Display the Xbox gamertag for online accounts
         cell.detailTextLabel.text = selected[@"xboxGamertag"];
@@ -146,7 +148,10 @@
         [self actionLoginMicrosoft:sender];
     }];
     [picker addAction:actionMicrosoft];
-    UIAlertAction *actionLocal = [UIAlertAction actionWithTitle:localize(@"login.option.local", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+    [picker addAction:[UIAlertAction actionWithTitle:@"Ely.by" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        [self actionLoginEly:sender];
+    }]];
+    UIAlertAction *actionLocal = [UIAlertAction actionWithTitle:localize(@"login.option.offline", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
         [self actionLoginLocal:sender];
     }];
     [picker addAction:actionLocal];
@@ -159,33 +164,83 @@
     [self presentViewController:picker animated:YES completion:nil];
 }
 
+- (void)actionLoginEly:(UITableViewCell *)sender {
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Sign in to Ely.by"
+        message:@"Enter your Ely.by credentials. If you use two-factor authentication, enter the current code too."
+        preferredStyle:UIAlertControllerStyleAlert];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *field) {
+        field.placeholder = @"Email or username";
+        field.autocapitalizationType = UITextAutocapitalizationTypeNone;
+        field.autocorrectionType = UITextAutocorrectionTypeNo;
+    }];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *field) {
+        field.placeholder = @"Password";
+        field.secureTextEntry = YES;
+    }];
+    [alert addTextFieldWithConfigurationHandler:^(UITextField *field) {
+        field.placeholder = @"Two-factor code (optional)";
+        field.keyboardType = UIKeyboardTypeNumberPad;
+    }];
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"Cancel", nil) style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:localize(@"Sign in", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+        NSString *username = [alert.textFields[0].text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        NSString *password = alert.textFields[1].text;
+        NSString *code = alert.textFields[2].text;
+        if (!username.length || !password.length) {
+            showDialog(@"Ely.by", @"Email or username and password are required.");
+            return;
+        }
+        if (code.length) password = [password stringByAppendingFormat:@":%@", code];
+        BaseAuthenticator *previous = BaseAuthenticator.current;
+        ElyAuthenticator *auth = [[ElyAuthenticator alloc] initWithInput:username];
+        self.modalInPresentation = YES;
+        self.tableView.userInteractionEnabled = NO;
+        [self addActivityIndicatorTo:sender];
+        [auth loginWithUsername:username password:password callback:^(id status, BOOL success) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.modalInPresentation = NO;
+                self.tableView.userInteractionEnabled = YES;
+                [self removeActivityIndicatorFrom:sender];
+                if (success) {
+                    self.whenItemSelected();
+                    [self dismissViewControllerAnimated:YES completion:nil];
+                } else {
+                    BaseAuthenticator.current = previous;
+                    showDialog(@"Ely.by", [status localizedDescription]);
+                }
+            });
+        }];
+        alert.textFields[1].text = @"";
+        alert.textFields[2].text = @"";
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)actionLoginLocal:(UIView *)sender {
-    if (getPrefBool(@"warnings.local_warn")) {
-        setPrefBool(@"warnings.local_warn", NO);
-        UIAlertController *alert = [UIAlertController alertControllerWithTitle:localize(@"login.warn.title.localmode", nil) message:localize(@"login.warn.message.localmode", nil) preferredStyle:UIAlertControllerStyleActionSheet];
-        alert.popoverPresentationController.sourceView = sender;
-        alert.popoverPresentationController.sourceRect = sender.bounds;
-        UIAlertAction *ok = [UIAlertAction actionWithTitle:localize(@"OK", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {[self actionLoginLocal:sender];}];
-        [alert addAction:ok];
-        [self presentViewController:alert animated:YES completion:nil];
-        return;
-    }
-    UIAlertController *controller = [UIAlertController alertControllerWithTitle:localize(@"Sign in", nil) message:localize(@"login.option.local", nil) preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *controller = [UIAlertController alertControllerWithTitle:localize(@"login.option.offline", nil) message:@"Choose a username for single-player and offline-mode servers." preferredStyle:UIAlertControllerStyleAlert];
     [controller addTextFieldWithConfigurationHandler:^(UITextField *textField) {
         textField.placeholder = localize(@"login.alert.field.username", nil);
+        textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
+        textField.autocorrectionType = UITextAutocorrectionTypeNo;
         textField.clearButtonMode = UITextFieldViewModeWhileEditing;
         textField.borderStyle = UITextBorderStyleRoundedRect;
     }];
     [controller addAction:[UIAlertAction actionWithTitle:localize(@"OK", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
         NSArray *textFields = controller.textFields;
         UITextField *usernameField = textFields[0];
-        if (usernameField.text.length < 3 || usernameField.text.length > 16) {
-            controller.message = localize(@"login.error.username.outOfRange", nil);
+        if (![LocalAuthenticator isValidUsername:usernameField.text]) {
+            controller.message = @"Use 3–16 letters, numbers, or underscores.";
             [self presentViewController:controller animated:YES completion:nil];
         } else {
+            BaseAuthenticator *previous = BaseAuthenticator.current;
             id callback = ^(id status, BOOL success) {
-                self.whenItemSelected();
-                [self dismissViewControllerAnimated:YES completion:nil];
+                if (success) {
+                    self.whenItemSelected();
+                    [self dismissViewControllerAnimated:YES completion:nil];
+                } else {
+                    BaseAuthenticator.current = previous;
+                    showDialog(@"Offline account", [status localizedDescription]);
+                }
             };
             [[[LocalAuthenticator alloc] initWithInput:usernameField.text] loginWithCallback:callback];
         }
@@ -269,7 +324,7 @@
             NSData *errorData = ((NSError *)status).userInfo[AFNetworkingOperationFailingURLResponseDataErrorKey];
             NSString *errorStr = [[NSString alloc] initWithData:errorData encoding:NSUTF8StringEncoding];
             NSLog(@"[MSA] Error: %@", errorStr);
-            showDialog(localize(@"Error", nil), errorStr);
+            showDialog(localize(@"Error", nil), errorStr.length ? errorStr : [status localizedDescription]);
         }
     } else if (success) {
         self.whenItemSelected();
