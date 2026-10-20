@@ -109,7 +109,7 @@ public final class Tools {
             for (Object arg : versionInfo.arguments.game) {
                 if (arg instanceof String) {
                     minecraftArgs.add((String) arg);
-                    if (arg.equals("--xuid")) {
+                    if (arg.equals("--xuid") && !"ely".equals(profile.accountType) && !"offline".equals(profile.accountType)) {
                         varArgMap.put("user_type", "msa");
                     }
                 } else {
