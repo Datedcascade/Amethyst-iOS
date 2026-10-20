@@ -28,6 +28,8 @@ jobs:
         run: |
           xcrun clang -fobjc-arc -framework Foundation tests/OfflineIdentityTests.m -o "$RUNNER_TEMP/offline-identity-tests"
           "$RUNNER_TEMP/offline-identity-tests"
+      - name: Compile native app
+        run: gmake -j3 native PLATFORM=2 RELEASE=1
       - name: Build iOS IPA
         run: gmake -j3 package PLATFORM=2 RELEASE=1
       - name: Upload IPA
