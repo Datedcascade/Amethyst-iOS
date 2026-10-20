@@ -10,6 +10,7 @@ public class MinecraftAccount
     public String profileId = "00000000-0000-0000-0000-000000000000"; // authenticate UUID
     public String username = "Steve";
     public String xuid;
+    public String accountType;
     
     public String save(String outPath) throws IOException {
         Tools.write(outPath, Tools.GLOBAL_GSON.toJson(this));
@@ -26,6 +27,8 @@ public class MinecraftAccount
         if (account.xuid != null) {
             account.accessToken = getAccessTokenFromKeychain(account.xuid);
         }
+        // The Ely Keychain identifier is not an Xbox user ID.
+        if ("ely".equals(account.accountType) || "offline".equals(account.accountType)) account.xuid = "";
         return account;
     }
     
