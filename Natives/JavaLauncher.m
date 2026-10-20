@@ -441,7 +441,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
 
     NSString *librariesPath = [NSString stringWithFormat:@"%@/libs", NSBundle.mainBundle.bundlePath];
     margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@/patchjna_agent.jar=", librariesPath].UTF8String;
-    if (!isExecuteJar && [BaseAuthenticator.current.authData[@"accountType"] isEqualToString:@"ely"]) {
+    if (!launchJar && [BaseAuthenticator.current.authData[@"accountType"] isEqualToString:@"ely"]) {
         margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@/authlib-injector.jar=ely.by", librariesPath].UTF8String;
     } else if(getPrefBool(@"general.cosmetica")) {
         margv[++margc] = [NSString stringWithFormat:@"-javaagent:%@/arc_dns_injector.jar=23.95.137.176", librariesPath].UTF8String;
