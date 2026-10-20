@@ -33,7 +33,9 @@ static BaseAuthenticator *current = nil;
         return nil;
     }
 
-    if ([authData[@"expiresAt"] longValue] == 0) {
+    if ([authData[@"accountType"] isEqualToString:@"ely"]) {
+        return [[ElyAuthenticator alloc] initWithData:authData];
+    } else if ([authData[@"accountType"] isEqualToString:@"offline"] || [authData[@"expiresAt"] longValue] == 0) {
         return [[LocalAuthenticator alloc] initWithData:authData];
     } else { 
         return [[MicrosoftAuthenticator alloc] initWithData:authData];
