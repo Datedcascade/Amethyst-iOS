@@ -1,11 +1,11 @@
 # Better than Adventure and personal service defaults
 
 Build and package checks passed for source commit
-`7440580e32b50c69db24f6cd70d12b855bc33537`:
-https://github.com/Datedcascade/Amethyst-iOS/actions/runs/39548271779
+`25b0f4d2ced3d3c09350219efa873e392acde188`:
+https://github.com/Datedcascade/Amethyst-iOS/actions/runs/39616267110
 
 The verified personal IPA and TrollStore packages are in
-`artifacts/bta-modpacks/`, alongside SHA-256 checksums and installation notes.
+`artifacts/auto-loaders/`, alongside SHA-256 checksums and installation notes.
 Both original CI archives matched GitHub's digests. Checks confirmed the arm64
 executable, BTA installer and profile metadata, launcher classpath change, and
 private configuration; personalization preserved the original app entries.
@@ -80,4 +80,3 @@ locally and run `python3 scripts/personalize_ipa.py original.ipa personal.ipa`.
 Import the resulting package into LiveContainer or sign it normally with your
 sideloading tool. The script preserves every original ZIP entry byte-for-byte
 and adds the configuration; it does not provide an Apple signing identity.
-
