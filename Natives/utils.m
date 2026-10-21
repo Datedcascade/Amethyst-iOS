@@ -10,6 +10,7 @@
 #include <pthread.h>
 
 #include "utils.h"
+#import "external/ballpa1n/include/IOKitLib.h"
 
 // Foreground/background gate. appIsForeground lives in environ.h (shared with
 // the render bridges) but all writes/waits go through these functions so the
@@ -239,10 +240,28 @@ BOOL DeviceCanCreateRXMap(void) {
 }
 
 BOOL DeviceHasTXMReal(void) {
+    // Match LiveContainer's hardware check instead of inferring TXM from the
+    // iOS version. A false positive can wait forever for an attached debugger
+    // even after conventional JIT has been enabled on an older device.
+    io_registry_entry_t memoryMap = IORegistryEntryFromPath(0, "IODeviceTree:/chosen/memory-map");
+    if (memoryMap != IO_OBJECT_NULL) {
+        CFTypeRef keys = IORegistryEntryCreateCFProperty(memoryMap, CFSTR("IORegistryEntryPropertyKeys"), kCFAllocatorDefault, 0);
+        IOObjectRelease(memoryMap);
+        if (keys) {
+            if (CFGetTypeID(keys) == CFArrayGetTypeID()) {
+                BOOL hasTXM = [(__bridge NSArray *)keys containsObject:@"TXM"];
+                CFRelease(keys);
+                NSLog(@"[JIT] Device tree reports TXM=%d", hasTXM);
+                return hasTXM;
+            }
+            CFRelease(keys);
+        }
+    }
     DIR *d = opendir("/private/preboot");
     if(!d) {
         // /private/preboot is not accessible in 27.0 and 26.6?, fallback to speculation
         NSUInteger (*MGGetSInt64Answer)(NSString *) = dlsym(RTLD_DEFAULT, "MGGetSInt64Answer");
+        if (!MGGetSInt64Answer) return YES;
         NSUInteger chipID = MGGetSInt64Answer(@"ChipID");
         switch(chipID) {
             case 0x8020: // A12
@@ -258,7 +277,7 @@ BOOL DeviceHasTXMReal(void) {
     }
     // deterministically detect TXM for 17.0-26.5?
     struct dirent *dir;
-    char txmPath[PATH_MAX];
+    char txmPath[PATH_MAX] = {0};
     while ((dir = readdir(d)) != NULL) {
         if(strlen(dir->d_name) == 96) {
             snprintf(txmPath, sizeof(txmPath), "/private/preboot/%s/usr/standalone/firmware/FUD/Ap,TrustedExecutionMonitor.img4", dir->d_name);
