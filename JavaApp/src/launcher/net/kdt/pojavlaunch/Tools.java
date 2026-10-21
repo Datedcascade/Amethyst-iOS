@@ -191,6 +191,10 @@ public final class Tools {
 */
     public static String generateLaunchClassPath(JMinecraftVersionList.Version info) {
         StringBuilder libStr = new StringBuilder(); //versnDir + "/" + version + "/" + version + ".jar:";
+        String clientJar = DIR_HOME_VERSION + "/" + info.id + "/" + info.id + ".jar";
+        // BTA's jarmod must override the vanilla Beta classes and resources.
+        boolean clientFirst = info.id.equals("bta-8.0.1");
+        if (clientFirst) libStr.append(clientJar).append(":");
 
         String[] classpath = generateLibClasspath(info);
 
@@ -221,7 +225,7 @@ public final class Tools {
             }
             libStr.append(perJar + ":");
         }
-        libStr.append(DIR_HOME_VERSION + "/" + info.id + "/" + info.id + ".jar");
+        if (!clientFirst) libStr.append(clientJar);
 
         return libStr.toString();
     }
@@ -484,3 +488,4 @@ createLibraryInfo(libItem);
         write(path, content.getBytes());
     }
 }
+
