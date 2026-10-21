@@ -432,6 +432,38 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         [ALTServerManager.sharedManager stopDiscovering];
         handler();
         return;
+    } else if (isLiveContainer) {
+        // LiveContainer must request JIT before starting this guest. Its JIT
+        // enabler knows the host's identity and can launch shared StikDebug in
+        // another container; opening stikjit:// here bypasses that handoff.
+        NSString *infoPath = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"LCAppInfo.plist"];
+        NSMutableDictionary *info = [NSMutableDictionary dictionaryWithContentsOfFile:infoPath];
+        BOOL needsScript = DeviceHasJITFlags(JIT_FLAG_FORCE_MIRRORED | JIT_FLAG_HAS_TXM);
+        NSData *script = [NSData dataWithContentsOfFile:[NSBundle.mainBundle pathForResource:@"UniversalJIT26" ofType:@"js"]];
+        BOOL configured = NO;
+        if (info && (!needsScript || script.length > 0)) {
+            info[@"isJITNeeded"] = @YES;
+            if (needsScript) {
+                info[@"jitLaunchScriptJs"] = [script base64EncodedStringWithOptions:0];
+            }
+            configured = [info writeToFile:infoPath atomically:YES];
+        }
+        // Also make the script available for manual import if this version of
+        // LiveContainer does not allow updating the guest's settings file.
+        NSString *documents = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+        if (script.length > 0 && documents) {
+            [script writeToFile:[documents stringByAppendingPathComponent:@"UniversalJIT26.js"] atomically:YES];
+        }
+        NSLog(@"[JIT] LiveContainer launch configuration %@; script required=%d", configured ? @"saved" : @"requires manual setup", needsScript);
+        NSString *message = configured
+            ? (needsScript ? @"Amethyst's LiveContainer settings have been updated to launch with JIT and use its Universal JIT script." : @"Amethyst's LiveContainer settings have been updated to launch with JIT.")
+            : @"In LiveContainer, hold Amethyst, open Settings and enable Launch with JIT. On devices requiring a JIT script, select UniversalJIT26.js from Amethyst's Documents folder.";
+        message = [message stringByAppendingString:@"\n\nClose Amethyst and restart its LiveContainer. In LiveContainer Settings > JIT, select StikDebug (Another LiveContainer). Import StikDebug's pairing file, make StikDebug a shared app, connect LocalDevVPN, and leave the second LiveContainer free. Then run Amethyst from LiveContainer and keep the JIT request open until it completes."];
+        UIAlertController *setup = [UIAlertController alertControllerWithTitle:@"LiveContainer JIT setup" message:message preferredStyle:UIAlertControllerStyleAlert];
+        [setup addAction:[UIAlertAction actionWithTitle:localize(@"OK", nil) style:UIAlertActionStyleDefault handler:nil]];
+        [self presentViewController:setup animated:YES completion:nil];
+        self.progressText.text = @"Restart LiveContainer to enable JIT";
+        return;
     } else if (hasTrollStoreJIT) {
         NSURL *jitURL = [NSURL URLWithString:[NSString stringWithFormat:@"apple-magnifier://enable-jit?bundle-id=%@", NSBundle.mainBundle.bundleIdentifier]];
         [UIApplication.sharedApplication openURL:jitURL options:@{} completionHandler:nil];
@@ -534,3 +566,4 @@ static void *ProgressObserverContext = &ProgressObserverContext;
 }
 
 @end
+
