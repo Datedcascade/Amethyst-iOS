@@ -106,6 +106,29 @@ saved account and sign in again.
 
 ## Dependencies and references
 
+### LiveContainer and StikDebug in a second container
+
+When launched without JIT inside LiveContainer, Amethyst now enables its own
+`isJITNeeded` setting and installs the bundled Universal JIT script in
+`LCAppInfo.plist` on devices requiring it. It exports the script to Documents
+for manual import and prompts for a restart. It does not send a guest bundle ID
+to an externally installed StikDebug: LiveContainer handles the host identity,
+script and second-container handoff before starting the guest.
+
+In LiveContainer Settings > JIT, select **StikDebug (Another LiveContainer)**.
+Import the pairing file into StikDebug, convert StikDebug to a shared app,
+connect LocalDevVPN, and keep a second LiveContainer free. Restart Amethyst's
+LiveContainer after its setup prompt, then run Amethyst from the app list.
+If automatic configuration cannot be saved, hold Amethyst > Settings > enable
+**Launch with JIT** and select `UniversalJIT26.js` from Amethyst's Documents
+folder for devices requiring a script. Keep the JIT request open while the
+handoff completes. Do not pre-enable JIT on the container with an unrelated
+script. See [LiveContainer's JIT guide](https://livecontainer.github.io/docs/guides/jit-support).
+
+The launch path is compile-checked in CI; this change still requires device
+testing. A world startup failure after successful JIT acquisition can have a
+separate cause; collect Amethyst's latest log and any iOS crash report.
+
 - Ely.by API: https://docs.ely.by/en/minecraft-auth.html
 - Game integration: https://docs.ely.by/en/authlib-injector.html
 - Bundled at build time: authlib-injector 1.2.8 from its official GitHub release,
@@ -115,3 +138,4 @@ saved account and sign in again.
 The implementation uses Ely.by's documented password API for personal builds.
 Ely.by recommends OAuth for distributed launchers; an OAuth application and
 registered redirect configuration would be needed for that alternative.
+
