@@ -25,6 +25,21 @@ controls and world startup still need testing; this installer is experimental.
 This integration currently targets 8.0.1 only; it does not automatically update
 or claim compatibility with historic BTA versions or mod loaders.
 
+The startup repair pins sizes and SHA-1 hashes for all 19 downloadable libraries,
+including fastutil 8.5.15. Existing launcher-owned BTA 8.0.1 metadata is refreshed
+on Play. File progress remains incomplete until each download is moved and
+verified; this prevents the launcher from starting with a missing dependency.
+The old-phone log confirmed missing fastutil, with working Java 17 and JIT.
+The newer phone's separate LiveContainer exit still needs device verification.
+
+Modpacks now has Modrinth and CurseForge tabs. CurseForge client ZIP manifests
+resolve required project/file IDs through the official API, check hashes, and
+extract overrides into a separate instance folder. Fabric/Quilt metadata is
+installed automatically; Forge/NeoForge must first be installed through Profiles
++ with the exact version requested by the pack. Packs with API-blocked required
+files report the project/file IDs and stop instead of installing an incomplete
+pack. This does not guarantee that desktop mods are compatible with iOS.
+
 Sources:
 - https://www.betterthanadventure.net/downloads/
 - https://www.betterthanadventure.net/installation-guide/
