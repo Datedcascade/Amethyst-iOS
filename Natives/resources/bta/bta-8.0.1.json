@@ -15,7 +15,9 @@
       "downloads": {
         "artifact": {
           "path": "com/deepoove/codehighlight/1.0.3/codehighlight-1.0.3.jar",
-          "url": "https://repo.maven.apache.org/maven2/com/deepoove/codehighlight/1.0.3/codehighlight-1.0.3.jar"
+          "url": "https://repo.maven.apache.org/maven2/com/deepoove/codehighlight/1.0.3/codehighlight-1.0.3.jar",
+          "size": 158674,
+          "sha1": "ced62053cab89cbc6f2e30183eeeba2c0aea173d"
         }
       }
     },
@@ -24,7 +26,9 @@
       "downloads": {
         "artifact": {
           "path": "com/formdev/flatlaf/3.1.1/flatlaf-3.1.1.jar",
-          "url": "https://repo.maven.apache.org/maven2/com/formdev/flatlaf/3.1.1/flatlaf-3.1.1.jar"
+          "url": "https://repo.maven.apache.org/maven2/com/formdev/flatlaf/3.1.1/flatlaf-3.1.1.jar",
+          "size": 790619,
+          "sha1": "6a416d43bbd91fd5632ba6b5d023c49027e92cf5"
         }
       }
     },
@@ -33,7 +37,9 @@
       "downloads": {
         "artifact": {
           "path": "com/github/Better-than-Adventure/bta-brigadier/1.0.2/bta-brigadier-1.0.2.jar",
-          "url": "https://jitpack.io/com/github/Better-than-Adventure/bta-brigadier/1.0.2/bta-brigadier-1.0.2.jar"
+          "url": "https://jitpack.io/com/github/Better-than-Adventure/bta-brigadier/1.0.2/bta-brigadier-1.0.2.jar",
+          "size": 80075,
+          "sha1": "62a793e236961c71f4fd7c570131ee574f519954"
         }
       }
     },
@@ -53,7 +59,9 @@
       "downloads": {
         "artifact": {
           "path": "com/github/JnCrMx/discord-game-sdk4j/v0.5.5/discord-game-sdk4j-v0.5.5.jar",
-          "url": "https://jitpack.io/com/github/JnCrMx/discord-game-sdk4j/v0.5.5/discord-game-sdk4j-v0.5.5.jar"
+          "url": "https://jitpack.io/com/github/JnCrMx/discord-game-sdk4j/v0.5.5/discord-game-sdk4j-v0.5.5.jar",
+          "size": 204352,
+          "sha1": "328d6cf2f06e374eb22ba6f20b47d7847f4361d2"
         }
       }
     },
@@ -62,7 +70,9 @@
       "downloads": {
         "artifact": {
           "path": "com/google/code/gson/gson/2.10.1/gson-2.10.1.jar",
-          "url": "https://libraries.minecraft.net/com/google/code/gson/gson/2.10.1/gson-2.10.1.jar"
+          "url": "https://libraries.minecraft.net/com/google/code/gson/gson/2.10.1/gson-2.10.1.jar",
+          "size": 283367,
+          "sha1": "b3add478d4382b78ea20b1671390a858002feb6c"
         }
       }
     },
@@ -71,7 +81,9 @@
       "downloads": {
         "artifact": {
           "path": "it/unimi/dsi/fastutil/8.5.15/fastutil-8.5.15.jar",
-          "url": "https://libraries.minecraft.net/it/unimi/dsi/fastutil/8.5.15/fastutil-8.5.15.jar"
+          "url": "https://libraries.minecraft.net/it/unimi/dsi/fastutil/8.5.15/fastutil-8.5.15.jar",
+          "size": 23730770,
+          "sha1": "1e885b40c9563ab0d3899b871fd0b30e958705dc"
         }
       }
     },
@@ -80,7 +92,9 @@
       "downloads": {
         "artifact": {
           "path": "org/apache/logging/log4j/log4j-api/2.19.0/log4j-api-2.19.0.jar",
-          "url": "https://libraries.minecraft.net/org/apache/logging/log4j/log4j-api/2.19.0/log4j-api-2.19.0.jar"
+          "url": "https://libraries.minecraft.net/org/apache/logging/log4j/log4j-api/2.19.0/log4j-api-2.19.0.jar",
+          "size": 317566,
+          "sha1": "ea1b37f38c327596b216542bc636cfdc0b8036fa"
         }
       }
     },
@@ -89,7 +103,9 @@
       "downloads": {
         "artifact": {
           "path": "org/apache/logging/log4j/log4j-core/2.19.0/log4j-core-2.19.0.jar",
-          "url": "https://libraries.minecraft.net/org/apache/logging/log4j/log4j-core/2.19.0/log4j-core-2.19.0.jar"
+          "url": "https://libraries.minecraft.net/org/apache/logging/log4j/log4j-core/2.19.0/log4j-core-2.19.0.jar",
+          "size": 1864386,
+          "sha1": "3b6eeb4de4c49c0fe38a4ee27188ff5fee44d0bb"
         }
       }
     },
@@ -98,7 +114,9 @@
       "downloads": {
         "artifact": {
           "path": "org/apache/logging/log4j/log4j-slf4j2-impl/2.19.0/log4j-slf4j2-impl-2.19.0.jar",
-          "url": "https://libraries.minecraft.net/org/apache/logging/log4j/log4j-slf4j2-impl/2.19.0/log4j-slf4j2-impl-2.19.0.jar"
+          "url": "https://libraries.minecraft.net/org/apache/logging/log4j/log4j-slf4j2-impl/2.19.0/log4j-slf4j2-impl-2.19.0.jar",
+          "size": 27721,
+          "sha1": "5c04bfdd63ce9dceb2e284b81e96b6a70010ee10"
         }
       }
     },
@@ -107,7 +125,9 @@
       "downloads": {
         "artifact": {
           "path": "org/jetbrains/kotlin/kotlin-stdlib-common/1.8.20/kotlin-stdlib-common-1.8.20.jar",
-          "url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.20/kotlin-stdlib-common-1.8.20.jar"
+          "url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.20/kotlin-stdlib-common-1.8.20.jar",
+          "size": 221491,
+          "sha1": "5eddaaf234c8c49d03eebeb6a14feb7f90faca71"
         }
       }
     },
@@ -116,7 +136,9 @@
       "downloads": {
         "artifact": {
           "path": "org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.20/kotlin-stdlib-jdk7-1.8.20.jar",
-          "url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.20/kotlin-stdlib-jdk7-1.8.20.jar"
+          "url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.20/kotlin-stdlib-jdk7-1.8.20.jar",
+          "size": 963,
+          "sha1": "3aa51faf20aae8b31e1a4bc54f8370673d7b7df4"
         }
       }
     },
@@ -125,7 +147,9 @@
       "downloads": {
         "artifact": {
           "path": "org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.20/kotlin-stdlib-jdk8-1.8.20.jar",
-          "url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.20/kotlin-stdlib-jdk8-1.8.20.jar"
+          "url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.20/kotlin-stdlib-jdk8-1.8.20.jar",
+          "size": 969,
+          "sha1": "73576ddf378c5b4f1f6b449fe6b119b8183fc078"
         }
       }
     },
@@ -134,7 +158,9 @@
       "downloads": {
         "artifact": {
           "path": "org/jetbrains/kotlin/kotlin-stdlib/1.8.20/kotlin-stdlib-1.8.20.jar",
-          "url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/1.8.20/kotlin-stdlib-1.8.20.jar"
+          "url": "https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/1.8.20/kotlin-stdlib-1.8.20.jar",
+          "size": 1670469,
+          "sha1": "e72fc5e03ec6c064c678a6bd0d955c88d55b0c4a"
         }
       }
     },
@@ -143,7 +169,9 @@
       "downloads": {
         "artifact": {
           "path": "org/jetbrains/annotations/24.0.0/annotations-24.0.0.jar",
-          "url": "https://repo.maven.apache.org/maven2/org/jetbrains/annotations/24.0.0/annotations-24.0.0.jar"
+          "url": "https://repo.maven.apache.org/maven2/org/jetbrains/annotations/24.0.0/annotations-24.0.0.jar",
+          "size": 30539,
+          "sha1": "69b8b443c437fdeefa8d20c18d257b94836a92b9"
         }
       }
     },
@@ -152,7 +180,9 @@
       "downloads": {
         "artifact": {
           "path": "org/joml/joml-primitives/1.10.0/joml-primitives-1.10.0.jar",
-          "url": "https://repo.maven.apache.org/maven2/org/joml/joml-primitives/1.10.0/joml-primitives-1.10.0.jar"
+          "url": "https://repo.maven.apache.org/maven2/org/joml/joml-primitives/1.10.0/joml-primitives-1.10.0.jar",
+          "size": 107579,
+          "sha1": "b3ae3ae0dfee0bf5aef9f7964205cca0f3c6ea07"
         }
       }
     },
@@ -161,7 +191,9 @@
       "downloads": {
         "artifact": {
           "path": "org/joml/joml/1.10.7/joml-1.10.7.jar",
-          "url": "https://repo.maven.apache.org/maven2/org/joml/joml/1.10.7/joml-1.10.7.jar"
+          "url": "https://repo.maven.apache.org/maven2/org/joml/joml/1.10.7/joml-1.10.7.jar",
+          "size": 778679,
+          "sha1": "f8c3f2e7db281bde099342dd36133de4bbba390c"
         }
       }
     },
@@ -170,7 +202,9 @@
       "downloads": {
         "artifact": {
           "path": "org/slf4j/slf4j-api/2.0.7/slf4j-api-2.0.7.jar",
-          "url": "https://libraries.minecraft.net/org/slf4j/slf4j-api/2.0.7/slf4j-api-2.0.7.jar"
+          "url": "https://libraries.minecraft.net/org/slf4j/slf4j-api/2.0.7/slf4j-api-2.0.7.jar",
+          "size": 63635,
+          "sha1": "41eb7184ea9d556f23e18b5cb99cad1f8581fc00"
         }
       }
     },
