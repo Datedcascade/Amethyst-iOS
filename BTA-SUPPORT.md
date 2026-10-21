@@ -32,13 +32,31 @@ verified; this prevents the launcher from starting with a missing dependency.
 The old-phone log confirmed missing fastutil, with working Java 17 and JIT.
 The newer phone's separate LiveContainer exit still needs device verification.
 
+The next launch repair keeps the BTA client, compatibility bridge and game
+dependencies visible in the parent loader together. The previous arrangement
+loaded the bridge in the parent while BTA's GameWindowGLFW existed only in a
+child; a desktop test reproduces that NoClassDefFoundError and verifies the
+corrected arrangement. The supplied Prism instance matches the pinned official
+ZIP byte-for-byte and confirms the same Java/library versions. Desktop GC flags
+from instance.cfg are not imported into the phone's constrained memory setup.
+
 Modpacks now has Modrinth and CurseForge tabs. CurseForge client ZIP manifests
 resolve required project/file IDs through the official API, check hashes, and
 extract overrides into a separate instance folder. Fabric/Quilt metadata is
-installed automatically; Forge/NeoForge must first be installed through Profiles
-+ with the exact version requested by the pack. Packs with API-blocked required
+installed automatically. Forge/NeoForge are selected from the manifest's exact
+version and downloaded from their official Maven repositories with checksums.
+For current installers, the launcher runs the official client action without
+Swing prompts, preserves the pending pack, and asks for an app restart when
+finished. On restart it validates the result and publishes the modpack profile.
+Interrupted/failed installs offer retry, later, or discarding the pending request;
+downloaded pack files are preserved. Legacy jarmod installers are extracted
+directly when their metadata format supports it. Packs with API-blocked required
 files report the project/file IDs and stop instead of installing an incomplete
 pack. This does not guarantee that desktop mods are compatible with iOS.
+
+Tests cover installer URL planning, BTA parent/child class visibility using the
+real client and bridge, the official Forge 1.12.2/1.20.1 and NeoForge client action
+APIs, and a complete isolated Forge 1.20.1 installation including processors.
 
 Sources:
 - https://www.betterthanadventure.net/downloads/
