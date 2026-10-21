@@ -2,9 +2,18 @@
 
 ## Status
 
-This implementation has not yet been compiled on macOS or tested on an iOS device.
-The Windows workspace cannot run the project's iOS compiler. A successful Actions
-build and the device checks below are required before treating it as working.
+The native iOS app, offline identity tests, standard IPA, and TrollStore package
+built successfully with Xcode 26.6 on GitHub's macOS runner. Build record:
+https://github.com/Datedcascade/Amethyst-iOS/actions/runs/39517925273
+
+Both downloaded artifact archives matched GitHub's SHA-256 digests. The IPA was
+checked for its arm64 executable, account bridge, launcher JAR, Ely.by helper,
+and all four Java runtimes. The Ely.by helper matched its pinned SHA-256 digest
+in both install packages. Device sign-in, skins, server access, and compatibility
+with your particular iOS versions still need testing.
+
+Your prepared fork is https://github.com/Datedcascade/Amethyst-iOS.
+Local install packages and their checksums are in `artifacts/`.
 
 ## Build from Windows using GitHub
 
@@ -23,7 +32,7 @@ build and the device checks below are required before treating it as working.
 
 If the run fails, share the first failed step's log, with credentials removed.
 The original project has substantial native dependencies and external runtime
-downloads; this new workflow is a starting point until its first successful run.
+downloads, so a fresh build can take around 20 minutes.
 
 ## Build on a Mac
 
@@ -82,7 +91,7 @@ modified or moved; inventory, advancements, and other player data associated
 with the old UUID may need a separate migration. Back up existing worlds first.
 
 The manual workflow runs offline identity and username-validation tests before
-building. Those tests and the IPA build still need to run on a Mac/GitHub runner.
+building. Those tests and both package builds passed on the GitHub runner.
 Both standard IPA and TrollStore packages target the project's existing iOS 14+
 minimum, which includes iOS 15. Installation and JIT on your other phone depend
 on the sideloading/debugging method available on that device; iOS 27 compatibility
