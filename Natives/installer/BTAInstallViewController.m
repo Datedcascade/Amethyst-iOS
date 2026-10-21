@@ -1,5 +1,6 @@
 #import "BTAInstallViewController.h"
 #import "LauncherProfileEditorViewController.h"
+#import "LauncherNavigationController.h"
 #import "LauncherPreferences.h"
 #import "UnzipKit.h"
 #import "utils.h"
