@@ -30,6 +30,8 @@ jobs:
           "$RUNNER_TEMP/offline-identity-tests"
       - name: Compile native app
         run: gmake -j3 native PLATFORM=2 RELEASE=1
+      - name: Test BTA metadata
+        run: python3 tests/test_bta_manifest.py
       - name: Build iOS IPA
         run: gmake -j3 package PLATFORM=2 RELEASE=1
       - name: Upload IPA
@@ -46,3 +48,4 @@ jobs:
           name: Amethyst-Ely-iOS-TrollStore
           path: artifacts/org.angelauramc.amethyst-*-ios-trollstore.tipa
           if-no-files-found: error
+
