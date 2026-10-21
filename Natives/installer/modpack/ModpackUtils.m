@@ -5,12 +5,19 @@
 
 + (void)archive:(UZKArchive *)archive extractDirectory:(NSString *)dir toPath:(NSString *)path error:(NSError *__autoreleasing*)error {
     [archive performOnFilesInArchive:^(UZKFileInfo *fileInfo, BOOL *stop) {
-        if (![fileInfo.filename hasPrefix:dir] ||
+        if (![fileInfo.filename hasPrefix:[dir stringByAppendingString:@"/"]] ||
             fileInfo.filename.length <= dir.length) {
             return;
         }
         NSString *fileName = [fileInfo.filename substringFromIndex:dir.length+1];
         NSString *destItemPath = [path stringByAppendingPathComponent:fileName];
+        NSString *root = [path.stringByStandardizingPath stringByResolvingSymlinksInPath];
+        NSString *resolved = [destItemPath.stringByStandardizingPath stringByResolvingSymlinksInPath];
+        if (![resolved hasPrefix:[root stringByAppendingString:@"/"]] || [fileName containsString:@"\\"]) {
+            if (error) *error = [NSError errorWithDomain:@"Modpack" code:1 userInfo:@{NSLocalizedDescriptionKey: @"The modpack contains an unsafe override path."}];
+            *stop = YES;
+            return;
+        }
         NSString *destDirPath = fileInfo.isDirectory ? destItemPath : destItemPath.stringByDeletingLastPathComponent;
         BOOL createdDir = [NSFileManager.defaultManager createDirectoryAtPath:destDirPath
             withIntermediateDirectories:YES
@@ -42,8 +49,13 @@
     } else if (dependency[@"quilt-loader"]) {
         info[@"id"] = [NSString stringWithFormat:@"quilt-loader-%@-%@", dependency[@"quilt-loader"], minecraftVersion];
         info[@"json"] = [NSString stringWithFormat:FabricUtils.endpoints[@"Quilt"][@"json"], minecraftVersion, dependency[@"quilt-loader"]];
+    } else if (dependency[@"neoforge"]) {
+        info[@"id"] = [NSString stringWithFormat:@"neoforge-%@", dependency[@"neoforge"]];
+    } else if (minecraftVersion.length) {
+        info[@"id"] = minecraftVersion;
     }
     return info;
 }
 
 @end
+
