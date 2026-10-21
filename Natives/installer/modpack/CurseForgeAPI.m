@@ -4,6 +4,7 @@
 #import "MinecraftResourceDownloadTask.h"
 #import "DownloadCompletion.h"
 #import "PLProfiles.h"
+#import "ModpackLoaderInstaller.h"
 #import <Security/Security.h>
 
 static NSString *CFString(id value) { return [value isKindOfClass:NSString.class] ? value : @""; }
@@ -245,15 +246,6 @@ static NSNumber *CFLoader(NSDictionary *filters) {
                 }
                 if (!recognized) { failure = [@"Unsupported mod loader: " stringByAppendingString:loaderID]; return; }
             }
-            NSDictionary *depInfo = [ModpackUtils infoForDependencies:dependencies];
-            NSString *versionID = depInfo[@"id"];
-            if (!versionID.length || ![versionID isEqual:versionID.lastPathComponent] || [versionID containsString:@"\\"] || [versionID containsString:@".."] ) {
-                failure = @"The modpack contains an invalid game or loader version."; return;
-            }
-            NSString *jsonPath = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("GAME_DIR"), versionID];
-            if (!depInfo[@"json"] && loaderID.length && ![NSFileManager.defaultManager fileExistsAtPath:jsonPath]) {
-                failure = [NSString stringWithFormat:@"Install %@ for Minecraft %@ from Profiles + first, then install this modpack again.", loaderID, minecraft[@"version"]]; return;
-            }
             // Resolve every required file before changing the instance/profile.
             NSMutableArray *resolved = [NSMutableArray new];
             NSArray *entries = manifest[@"files"];
@@ -284,6 +276,10 @@ static NSNumber *CFLoader(NSDictionary *filters) {
                     [resolved addObject:download];
                 }
             }
+            NSDictionary *depInfo = [ModpackLoaderInstaller prepareDependencies:dependencies downloader:downloader error:&error];
+            if (!depInfo || error) { failure = error.localizedDescription ?: @"Unable to prepare the pack's loader."; return; }
+            NSString *versionID = depInfo[@"id"];
+            NSString *jsonPath = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("GAME_DIR"), versionID];
             NSString *overrides = CFString(manifest[@"overrides"]);
             if (overrides.length) [ModpackUtils archive:archive extractDirectory:overrides toPath:destPath error:&error];
             if (error) { failure = error.localizedDescription; return; }
@@ -301,9 +297,13 @@ static NSNumber *CFLoader(NSDictionary *filters) {
                 NSString *profileKey = [name stringByAppendingFormat:@" (%@)", [destPath.lastPathComponent substringToIndex:8]];
                 NSData *icon = [NSData dataWithContentsOfFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"icon.png"]];
                 PLProfiles *profiles = PLProfiles.current;
-                profiles.profiles[profileKey] = [@{@"name": profileKey, @"gameDir": [@"./custom_gamedir/" stringByAppendingString:destPath.lastPathComponent],
+                NSMutableDictionary *profile = [@{@"name": profileKey, @"gameDir": [@"./custom_gamedir/" stringByAppendingString:destPath.lastPathComponent],
                     @"lastVersionId": versionID, @"icon": icon ? [@"data:image/png;base64," stringByAppendingString:[icon base64EncodedStringWithOptions:0]] : @""} mutableCopy];
-                profiles.selectedProfileName = profileKey;
+                if (downloader.loaderInstallRequest) downloader.loaderInstallRequest[@"profile"] = profile;
+                else {
+                    profiles.profiles[profileKey] = profile;
+                    profiles.selectedProfileName = profileKey;
+                }
             });
             [NSFileManager.defaultManager removeItemAtPath:packagePath error:nil];
         } @catch (NSException *exception) {
