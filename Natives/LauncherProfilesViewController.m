@@ -13,6 +13,7 @@
 #pragma clang diagnostic pop
 #import "UIKit+hook.h"
 #import "installer/FabricInstallViewController.h"
+#import "installer/BTAInstallViewController.h"
 #import "installer/ForgeInstallViewController.h"
 #import "installer/ModpackInstallViewController.h"
 #import "ios_uikit_bridge.h"
@@ -68,6 +69,11 @@ typedef NS_ENUM(NSUInteger, LauncherProfilesTableSection) {
             actionWithTitle:@"Forge" image:nil
             identifier:@"forge" handler:^(UIAction *action) {
                 [self actionCreateForgeProfile];
+            }],
+        [UIAction
+            actionWithTitle:@"Better than Adventure!" image:nil
+            identifier:@"bta" handler:^(UIAction *action) {
+                [self presentNavigatedViewController:[BTAInstallViewController new]];
             }],
         [UIAction
             actionWithTitle:@"Modpack" image:nil
@@ -267,3 +273,4 @@ typedef NS_ENUM(NSUInteger, LauncherProfilesTableSection) {
 }
 
 @end
+
