@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 16584)
-Total output lines: 1580
-
 /*
  * Copyright LWJGL. All rights reserved.
  * License terms: https://www.lwjgl.org/license
@@ -706,7 +703,133 @@ public class GLFW
                 mGLFWErrorCallback = GLFWErrorCallback.create(cbfun);
             } catch (Throwable t) {
                 // Same root cause as the static init block above: GLFWErrorCallback.create()
-                // builds a native…1584 tokens truncated…fun") GLFWWindowIconifyCallbackI cbfun) {
+                // builds a native LWJGL Callback, which needs libffi and that isn't included.
+                // Degrade gracefully instead of crashing render backend init.
+                t.printStackTrace();
+                mGLFWErrorCallback = null;
+            }
+        }
+
+        return lastCallback;
+    }
+
+    public static GLFWFramebufferSizeCallback glfwSetFramebufferSizeCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWframebuffersizefun") GLFWFramebufferSizeCallbackI cbfun) {
+        GLFWFramebufferSizeCallback lastCallback = mGLFWFramebufferSizeCallback;
+        if (cbfun == null) mGLFWFramebufferSizeCallback = null;
+        else mGLFWFramebufferSizeCallback = GLFWFramebufferSizeCallback.createSafe(nglfwSetFramebufferSizeCallback(window, memAddressSafe(cbfun)));
+
+        return lastCallback;
+    }
+
+    public static GLFWJoystickCallback glfwSetJoystickCallback(/* @NativeType("GLFWwindow *") long window, */ @Nullable @NativeType("GLFWjoystickfun") GLFWJoystickCallbackI cbfun) {
+        GLFWJoystickCallback lastCallback = mGLFWJoystickCallback;
+        if (cbfun == null) mGLFWJoystickCallback = null;
+        else {
+            try {
+                mGLFWJoystickCallback = GLFWJoystickCallback.create(cbfun);
+            } catch (Throwable t) {
+                // See glfwSetErrorCallback / static init block above: needs libffi,
+                // which isn't included. Degrade gracefully instead of crashing.
+                t.printStackTrace();
+                mGLFWJoystickCallback = null;
+            }
+        }
+
+        return lastCallback;
+    }
+
+    public static GLFWKeyCallback glfwSetKeyCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWkeyfun") GLFWKeyCallbackI cbfun) {
+        GLFWKeyCallback lastCallback = mGLFWKeyCallback;
+        if (cbfun == null) mGLFWKeyCallback = null;
+        else mGLFWKeyCallback = GLFWKeyCallback.createSafe(nglfwSetKeyCallback(window, memAddressSafe(cbfun)));
+
+        return lastCallback;
+    }
+
+    public static GLFWMonitorCallback glfwSetMonitorCallback(@Nullable @NativeType("GLFWmonitorfun") GLFWMonitorCallbackI cbfun) {
+        GLFWMonitorCallback lastCallback = mGLFWMonitorCallback;
+        if (cbfun == null) mGLFWMonitorCallback = null;
+        else {
+            try {
+                mGLFWMonitorCallback = GLFWMonitorCallback.create(cbfun);
+            } catch (Throwable t) {
+                // See glfwSetErrorCallback / static init block above: needs libffi,
+                // which isn't included. Degrade gracefully instead of crashing.
+                t.printStackTrace();
+                mGLFWMonitorCallback = null;
+            }
+        }
+
+        return lastCallback;
+    }
+
+    public static GLFWMouseButtonCallback glfwSetMouseButtonCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWmousebuttonfun") GLFWMouseButtonCallbackI cbfun) {
+        GLFWMouseButtonCallback lastCallback = mGLFWMouseButtonCallback;
+        if (cbfun == null) mGLFWMouseButtonCallback = null;
+        else mGLFWMouseButtonCallback = GLFWMouseButtonCallback.createSafe(nglfwSetMouseButtonCallback(window, memAddressSafe(cbfun)));
+
+        return lastCallback;
+    }
+
+    public static GLFWScrollCallback glfwSetScrollCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWscrollfun") GLFWScrollCallbackI cbfun) {
+        GLFWScrollCallback lastCallback = mGLFWScrollCallback;
+        if (cbfun == null) mGLFWScrollCallback = null;
+        else mGLFWScrollCallback = GLFWScrollCallback.createSafe(nglfwSetScrollCallback(window, memAddressSafe(cbfun)));
+
+        return lastCallback;
+    }
+
+    public static GLFWWindowCloseCallback glfwSetWindowCloseCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWwindowclosefun") GLFWWindowCloseCallbackI cbfun) {
+        GLFWWindowCloseCallback lastCallback = mGLFWWindowCloseCallback;
+        if (cbfun == null) mGLFWWindowCloseCallback = null;
+        else {
+            try {
+                mGLFWWindowCloseCallback = GLFWWindowCloseCallback.create(cbfun);
+            } catch (Throwable t) {
+                // See glfwSetErrorCallback / static init block above: needs libffi,
+                // which isn't included. Degrade gracefully instead of crashing.
+                t.printStackTrace();
+                mGLFWWindowCloseCallback = null;
+            }
+        }
+
+        return lastCallback;
+    }
+
+    public static GLFWWindowContentScaleCallback glfwSetWindowContentScaleCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWwindowcontentscalefun") GLFWWindowContentScaleCallbackI cbfun) {
+        GLFWWindowContentScaleCallback lastCallback = mGLFWWindowContentScaleCallback;
+        if (cbfun == null) mGLFWWindowContentScaleCallback = null;
+        else {
+            try {
+                mGLFWWindowContentScaleCallback = GLFWWindowContentScaleCallback.create(cbfun);
+            } catch (Throwable t) {
+                // See glfwSetErrorCallback / static init block above: needs libffi,
+                // which isn't included. Degrade gracefully instead of crashing.
+                t.printStackTrace();
+                mGLFWWindowContentScaleCallback = null;
+            }
+        }
+
+        return lastCallback;
+    }
+
+    public static GLFWWindowFocusCallback glfwSetWindowFocusCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWwindowfocusfun") GLFWWindowFocusCallbackI cbfun) {
+        GLFWWindowFocusCallback lastCallback = mGLFWWindowFocusCallback;
+        if (cbfun == null) mGLFWWindowFocusCallback = null;
+        else {
+            try {
+                mGLFWWindowFocusCallback = GLFWWindowFocusCallback.create(cbfun);
+            } catch (Throwable t) {
+                // See glfwSetErrorCallback / static init block above: needs libffi,
+                // which isn't included. Degrade gracefully instead of crashing.
+                t.printStackTrace();
+                mGLFWWindowFocusCallback = null;
+            }
+        }
+        return lastCallback;
+    }
+
+    public static GLFWWindowIconifyCallback glfwSetWindowIconifyCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWwindowiconifyfun") GLFWWindowIconifyCallbackI cbfun) {
         GLFWWindowIconifyCallback lastCallback = mGLFWWindowIconifyCallback;
         if (cbfun == null) mGLFWWindowIconifyCallback = null;
         else {
