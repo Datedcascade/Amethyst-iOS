@@ -162,6 +162,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
             NSMutableDictionary *lcAppInfo = [NSMutableDictionary dictionaryWithContentsOfFile:lcAppInfoPath];
             if(lcAppInfo) {
                 // if this is inside LiveContainer, we assign script ourselves and prompt user to restart Amethyst
+                lcAppInfo[@"isJITNeeded"] = @YES;
                 lcAppInfo[@"jitLaunchScriptJs"] = [[NSData dataWithContentsOfFile:inBundleScriptPath] base64EncodedStringWithOptions:0];
                 if([lcAppInfo writeToFile:lcAppInfoPath atomically:YES]) {
                     showDialog(localize(@"Error", nil), @"Amethyst was launched with a legacy script. We have updated the script to Universal, please restart LiveContainer to continue.");
@@ -599,3 +600,4 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
                    /* (const_jargs != NULL) ? JNI_TRUE : */ JNI_FALSE,
                    JNI_TRUE, JNI_FALSE, JNI_TRUE);
 }
+
