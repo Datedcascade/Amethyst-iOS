@@ -220,6 +220,10 @@ public final class Tools {
 
         for (String perJar : classpath) {
             if (!new File(perJar).exists()) {
+                if (clientFirst) {
+                    throw new IllegalStateException("BTA dependency is missing: " + perJar
+                            + ". Return to the launcher and press Play again to repair downloads.");
+                }
                 System.out.println("Ignored non-exists file: " + perJar);
                 continue;
             }
