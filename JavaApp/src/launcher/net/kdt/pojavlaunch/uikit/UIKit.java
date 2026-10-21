@@ -27,6 +27,10 @@ public class UIKit {
     }
 
     public static void callback_JavaGUIViewController_launchJarFile(final String filepath, String[] args) throws Throwable {
+        if (args.length==2 && args[0].equals("--amethyst-install-loader")) {
+            ModpackLoaderInstaller.run(filepath, args[1]);
+            return;
+        }
         // Launch the JAR file
         String mainClassName = null;
 
@@ -54,3 +58,4 @@ public class UIKit {
 
     public static native void showError(String title, String message, boolean exitIfOk);
 } 
+
