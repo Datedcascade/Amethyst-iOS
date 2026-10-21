@@ -143,6 +143,7 @@ add_executable(AngelAuraAmethyst
   installer/ModrinthModsViewController.m
   installer/FabricUtils.m
   installer/modpack/ModpackUtils.m
+  installer/modpack/ModpackLoaderInstaller.m
   installer/modpack/ModpackAPI.m
   installer/modpack/CurseForgeAPI.m
   installer/modpack/ModrinthAPI.m
