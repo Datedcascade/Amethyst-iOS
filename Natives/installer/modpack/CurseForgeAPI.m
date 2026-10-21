@@ -1,6 +1,9 @@
 #import <Foundation/Foundation.h>
 #import "CurseForgeAPI.h"
 #import "ModrinthSearchFilters.h"
+#import "MinecraftResourceDownloadTask.h"
+#import "DownloadCompletion.h"
+#import "PLProfiles.h"
 #import <Security/Security.h>
 
 static NSString *CFString(id value) { return [value isKindOfClass:NSString.class] ? value : @""; }
@@ -188,6 +191,130 @@ static NSNumber *CFLoader(NSDictionary *filters) {
 - (NSDictionary *)versionForID:(NSString *)versionID projectID:(NSString *)projectID {
     id response = [self getEndpoint:[NSString stringWithFormat:@"mods/%@/files/%@", projectID, versionID] params:nil];
     return [response isKindOfClass:NSDictionary.class] ? [self.class versionFromFile:response[@"data"]] : nil;
+}
+
+- (void)loadDetailsOfMod:(NSMutableDictionary *)item {
+    NSArray *versions = [self versionsForProject:item[@"id"] filters:@{@"isModpack": @YES}];
+    if (!versions) return;
+    NSMutableArray *names = [NSMutableArray new], *games = [NSMutableArray new], *urls = [NSMutableArray new];
+    NSMutableArray *sizes = [NSMutableArray new], *hashes = [NSMutableArray new];
+    for (NSDictionary *version in versions) {
+        NSDictionary *file = [version[@"files"] firstObject];
+        if ([version[@"downloadUnavailable"] boolValue] || ![CFString(file[@"filename"]).lowercaseString hasSuffix:@".zip"]) continue;
+        [names addObject:version[@"name"]];
+        [games addObject:[version[@"game_versions"] firstObject] ?: @""];
+        [urls addObject:file[@"url"]];
+        [sizes addObject:file[@"size"]];
+        [hashes addObject:file[@"hashes"][@"sha1"] ?: @""];
+    }
+    [item addEntriesFromDictionary:@{@"versionNames": names, @"mcVersionNames": games, @"versionUrls": urls,
+        @"versionSizes": sizes, @"versionHashes": hashes, @"versionDetailsLoaded": @YES}];
+}
+
+- (void)downloader:(MinecraftResourceDownloadTask *)downloader submitDownloadTasksFromPackage:(NSString *)packagePath toPath:(NSString *)destPath {
+    // API requests wait for callbacks on the main queue, so parse/resolve off it.
+    NSProgress *resolvedReady = AMHoldFileCompletion(downloader.progress);
+    __block NSString *failure;
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        @try {
+            NSError *error = nil;
+            UZKArchive *archive = [[UZKArchive alloc] initWithPath:packagePath error:&error];
+            NSData *data = [archive extractDataFromFile:@"manifest.json" error:&error];
+            NSDictionary *manifest = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:&error] : nil;
+            if (![manifest isKindOfClass:NSDictionary.class] || ![manifest[@"manifestType"] isEqual:@"minecraftModpack"] ||
+                ![manifest[@"manifestVersion"] isEqual:@1] || ![manifest[@"files"] isKindOfClass:NSArray.class]) {
+                failure = @"This archive is not a supported CurseForge client modpack.";
+                return;
+            }
+            NSDictionary *minecraft = manifest[@"minecraft"];
+            if (![minecraft isKindOfClass:NSDictionary.class] || !CFString(minecraft[@"version"]).length) {
+                failure = @"The modpack does not specify a Minecraft version."; return;
+            }
+            NSMutableDictionary *dependencies = [@{@"minecraft": minecraft[@"version"]} mutableCopy];
+            NSArray *loaders = [minecraft[@"modLoaders"] isKindOfClass:NSArray.class] ? minecraft[@"modLoaders"] : @[];
+            NSDictionary *primary = loaders.firstObject;
+            for (NSDictionary *loader in loaders) if ([loader[@"primary"] boolValue]) primary = loader;
+            NSString *loaderID = CFString(primary[@"id"]);
+            if (loaderID.length) {
+                BOOL recognized = NO;
+                for (NSString *kind in @[@"forge", @"neoforge", @"fabric", @"quilt"]) {
+                    NSString *prefix = [kind stringByAppendingString:@"-"];
+                    if (![loaderID hasPrefix:prefix]) continue;
+                    dependencies[[@{@"fabric": @"fabric-loader", @"quilt": @"quilt-loader"} objectForKey:kind] ?: kind] = [loaderID substringFromIndex:prefix.length];
+                    recognized = YES; break;
+                }
+                if (!recognized) { failure = [@"Unsupported mod loader: " stringByAppendingString:loaderID]; return; }
+            }
+            NSDictionary *depInfo = [ModpackUtils infoForDependencies:dependencies];
+            NSString *versionID = depInfo[@"id"];
+            if (!versionID.length || ![versionID isEqual:versionID.lastPathComponent] || [versionID containsString:@"\\"] || [versionID containsString:@".."] ) {
+                failure = @"The modpack contains an invalid game or loader version."; return;
+            }
+            NSString *jsonPath = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("GAME_DIR"), versionID];
+            if (!depInfo[@"json"] && loaderID.length && ![NSFileManager.defaultManager fileExistsAtPath:jsonPath]) {
+                failure = [NSString stringWithFormat:@"Install %@ for Minecraft %@ from Profiles + first, then install this modpack again.", loaderID, minecraft[@"version"]]; return;
+            }
+            // Resolve every required file before changing the instance/profile.
+            NSMutableArray *resolved = [NSMutableArray new];
+            NSArray *entries = manifest[@"files"];
+            for (NSUInteger offset = 0; offset < entries.count; offset += 50) {
+                NSArray *batch = [entries subarrayWithRange:NSMakeRange(offset, MIN(50, entries.count-offset))];
+                NSMutableArray *ids = [NSMutableArray new];
+                for (NSDictionary *entry in batch) {
+                    if (![entry[@"fileID"] isKindOfClass:NSNumber.class] || ![entry[@"projectID"] isKindOfClass:NSNumber.class]) {
+                        failure = @"The modpack contains an invalid file reference."; return;
+                    }
+                    [ids addObject:entry[@"fileID"]];
+                }
+                NSArray *files = [self listFromResponse:[self postEndpoint:@"mods/files" params:@{@"fileIds": ids}]];
+                if (!files) { failure = self.lastError.localizedDescription ?: @"Unable to resolve the modpack's required files."; return; }
+                for (NSDictionary *entry in batch) {
+                    NSDictionary *match = nil;
+                    for (NSDictionary *file in files) if ([file[@"id"] isEqual:entry[@"fileID"]] && [file[@"modId"] isEqual:entry[@"projectID"]]) { match = file; break; }
+                    NSDictionary *version = [self.class versionFromFile:match];
+                    NSDictionary *download = [version[@"files"] firstObject];
+                    NSString *filename = CFString(download[@"filename"]);
+                    if (!version || [version[@"downloadUnavailable"] boolValue]) {
+                        if ([entry[@"required"] isEqual:@NO]) continue;
+                        failure = [NSString stringWithFormat:@"CurseForge cannot supply required project %@, file %@. This pack cannot be installed completely through the API.", entry[@"projectID"], entry[@"fileID"]]; return;
+                    }
+                    if (!filename.length || ![filename isEqual:filename.lastPathComponent] || [filename containsString:@"\\"] || [filename hasPrefix:@"."]) {
+                        failure = @"The modpack contains an invalid filename."; return;
+                    }
+                    [resolved addObject:download];
+                }
+            }
+            NSString *overrides = CFString(manifest[@"overrides"]);
+            if (overrides.length) [ModpackUtils archive:archive extractDirectory:overrides toPath:destPath error:&error];
+            if (error) { failure = error.localizedDescription; return; }
+            for (NSDictionary *file in resolved) {
+                if (downloader.progress.cancelled) return;
+                NSString *path = [[destPath stringByAppendingPathComponent:@"mods"] stringByAppendingPathComponent:file[@"filename"]];
+                NSURLSessionDownloadTask *task = [downloader createDownloadTask:file[@"url"] size:[file[@"size"] unsignedLongLongValue] sha:file[@"hashes"][@"sha1"] altName:nil toPath:path];
+                [task resume];
+            }
+            if (depInfo[@"json"]) [[downloader createDownloadTask:depInfo[@"json"] size:0 sha:nil altName:nil toPath:jsonPath] resume];
+            if (downloader.progress.cancelled) return;
+            dispatch_sync(dispatch_get_main_queue(), ^{
+                NSString *name = CFString(manifest[@"name"]);
+                if (!name.length) name = @"CurseForge modpack";
+                NSString *profileKey = [name stringByAppendingFormat:@" (%@)", [destPath.lastPathComponent substringToIndex:8]];
+                NSData *icon = [NSData dataWithContentsOfFile:[NSTemporaryDirectory() stringByAppendingPathComponent:@"icon.png"]];
+                PLProfiles *profiles = PLProfiles.current;
+                profiles.profiles[profileKey] = [@{@"name": profileKey, @"gameDir": [@"./custom_gamedir/" stringByAppendingString:destPath.lastPathComponent],
+                    @"lastVersionId": versionID, @"icon": icon ? [@"data:image/png;base64," stringByAppendingString:[icon base64EncodedStringWithOptions:0]] : @""} mutableCopy];
+                profiles.selectedProfileName = profileKey;
+            });
+            [NSFileManager.defaultManager removeItemAtPath:packagePath error:nil];
+        } @catch (NSException *exception) {
+            failure = @"The CurseForge modpack manifest is malformed.";
+        } @finally {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (failure && !downloader.progress.cancelled) [downloader finishDownloadWithErrorString:failure];
+                else if (!downloader.progress.cancelled) resolvedReady.completedUnitCount = 1;
+            });
+        }
+    });
 }
 @end
 
