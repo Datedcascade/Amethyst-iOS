@@ -17,6 +17,7 @@
 #import "UIKit+hook.h"
 #import "ios_uikit_bridge.h"
 #import "utils.h"
+#import "installer/modpack/ModpackLoaderInstaller.h"
 
 #import <objc/runtime.h>
 #include <sys/time.h>
@@ -36,6 +37,7 @@ static void *ProgressObserverContext = &ProgressObserverContext;
 @property(nonatomic) UIButton* buttonInstall;
 @property(nonatomic) UIBarButtonItem* buttonInstallItem;
 @property(nonatomic) int profileSelectedAt;
+@property(nonatomic) BOOL checkingPendingLoader;
 
 @end
 
@@ -196,9 +198,11 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         NSDebugLog(@"[VersionList] Got %d versions", remoteVersionList.count);
         setPrefObject(@"internal.latest_version", responseObject[@"latest"]);
         [(id)(self.buttonInstall ?: self.buttonInstallItem) setEnabled:YES];
+        [self resumePendingLoaderInstall];
     } failure:^(NSURLSessionTask *operation, NSError *error) {
         NSDebugLog(@"[VersionList] Warning: Unable to fetch version list: %@", error.localizedDescription);
         [(id)(self.buttonInstall ?: self.buttonInstallItem) setEnabled:YES];
+        [self resumePendingLoaderInstall];
     }];
 }
 
@@ -253,6 +257,52 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         NSLog(@"[ModInstaller] launching %@", vc.filepath);
         [self presentViewController:vc animated:YES completion:nil];
     }];
+}
+
+- (void)resumePendingLoaderInstall {
+    if (self.checkingPendingLoader || self.task || self.presentedViewController) return;
+    NSString *path = ModpackLoaderInstaller.pendingPath;
+    NSMutableDictionary *request = parseJSONFromFile(path);
+    if (!request || request[@"NSErrorObject"]) return;
+    self.checkingPendingLoader = YES;
+    if (![request[@"schema"] isEqual:@1] || ![request[@"gameRoot"] isEqual:@(getenv("GAME_DIR"))] || ![request[@"profile"] isKindOfClass:NSDictionary.class]) {
+        showDialog(@"Loader installation", @"The pending modpack belongs to a different game directory or is invalid.");
+        return;
+    }
+    NSString *status = request[@"status"];
+    if ([status isEqual:@"complete"]) {
+        NSString *identifier = request[@"versionID"];
+        NSDictionary *version = parseJSONFromFile([NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("GAME_DIR"), identifier]);
+        if (![version[@"id"] isEqual:identifier]) { showDialog(@"Loader installation", @"The installed loader metadata is missing. The modpack was preserved."); return; }
+        NSMutableDictionary *profile = [request[@"profile"] mutableCopy];
+        PLProfiles.current.profiles[profile[@"name"]] = profile;
+        PLProfiles.current.selectedProfileName = profile[@"name"];
+        [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+        [self reloadProfileList];
+        showDialog(@"Modpack installed", @"The required loader and modpack are installed. Select the profile and press Play.");
+        return;
+    }
+    void (^run)(void) = ^{
+        JavaGUIViewController *vc = [JavaGUIViewController new];
+        vc.filepath = request[@"installerPath"];
+        vc.launchArguments = @[@"--amethyst-install-loader", path];
+        vc.minimumJavaVersion = [request[@"javaVersion"] intValue];
+        if (!vc.requiredJavaVersion) return;
+        [self invokeAfterJITEnabled:^{
+            vc.modalPresentationStyle = UIModalPresentationFullScreen;
+            [self presentViewController:vc animated:YES completion:nil];
+        }];
+    };
+    if ([status isEqual:@"ready"]) { run(); return; }
+    // A failed/interrupted run requires an explicit retry, avoiding restart loops.
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Resume modpack loader installation" message:request[@"error"] ?: @"The previous loader installation was interrupted. Downloaded modpack files were kept." preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Retry" style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) { run(); }]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Later" style:UIAlertActionStyleCancel handler:nil]];
+    [alert addAction:[UIAlertAction actionWithTitle:@"Discard pending request" style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
+        [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+        self.checkingPendingLoader = NO;
+    }]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentAtURL:(NSURL *)url {
@@ -357,6 +407,7 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
         return;
     }
+    if (object != self.task.progress) return;
 
     // Calculate download speed and ETA
     static CGFloat lastMsTime;
@@ -371,7 +422,7 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         CGFloat currentTime = tv.tv_sec + tv.tv_usec / 1000000.0;
         NSInteger throughput = (completedUnitCount - lastCompletedUnitCount) / (currentTime - lastMsTime);
         progress.throughput = @(throughput);
-        progress.estimatedTimeRemaining = @((progress.totalUnitCount - completedUnitCount) / throughput);
+        progress.estimatedTimeRemaining = throughput > 0 ? @((progress.totalUnitCount - completedUnitCount) / throughput) : nil;
         lastCompletedUnitCount = completedUnitCount;
         lastSecTime = tv.tv_sec;
         lastMsTime = currentTime;
@@ -384,6 +435,17 @@ static void *ProgressObserverContext = &ProgressObserverContext;
         [self.progressVC dismissModalViewControllerAnimated:NO];
 
         self.progressViewMain.observedProgress = nil;
+        if (self.task.loaderInstallRequest) {
+            NSError *error;
+            NSData *data = [NSJSONSerialization dataWithJSONObject:self.task.loaderInstallRequest options:0 error:&error];
+            BOOL saved = data && [data writeToFile:ModpackLoaderInstaller.pendingPath options:NSDataWritingAtomic error:&error];
+            self.task = nil;
+            self.checkingPendingLoader = NO;
+            [self setInteractionEnabled:YES forDownloading:YES];
+            if (!saved) showDialog(@"Loader installation", error.localizedDescription ?: @"Unable to preserve the pending modpack.");
+            else dispatch_async(dispatch_get_main_queue(), ^{ [self resumePendingLoaderInstall]; });
+            return;
+        }
         if (self.task.metadata) {
             __block NSDictionary *metadata = self.task.metadata;
             [self invokeAfterJITEnabled:^{
@@ -399,6 +461,10 @@ static void *ProgressObserverContext = &ProgressObserverContext;
 
 - (void)receiveNotification:(NSNotification *)notification {
     if (![notification.name isEqualToString:@"InstallModpack"]) {
+        return;
+    }
+    if ([NSFileManager.defaultManager fileExistsAtPath:ModpackLoaderInstaller.pendingPath]) {
+        showDialog(@"Pending modpack installation", @"Restart Amethyst to finish or discard the previous loader installation before installing another pack.");
         return;
     }
     [self setInteractionEnabled:NO forDownloading:YES];
