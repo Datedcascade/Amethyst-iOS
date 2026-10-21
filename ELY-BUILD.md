@@ -2,13 +2,13 @@
 
 ## Status
 
-The LiveContainer JIT update also built successfully (native compile, account
-tests, IPA and TrollStore packaging):
+The LiveContainer JIT update compiled and packaged successfully:
 https://github.com/Datedcascade/Amethyst-iOS/actions/runs/39523557562
-The standard IPA is in `artifacts/livecontainer-jit/Amethyst-Ely-LiveContainer.ipa`.
-Its artifact ZIP matched GitHub's SHA-256 digest, and the extracted arm64
-executable contains all three JIT changes. The exported script matches the
-bundled script. Device validation is still pending.
+Commit: `42a6c0ffae0ff4126fc2f35fac4a0258be805037`.
+The standard IPA is `artifacts/livecontainer-jit/Amethyst-LiveContainer-JIT.ipa`.
+Its downloaded ZIP matched GitHub's artifact digest, and the IPA contains the
+new configuration, hardware-detection and deferred-status code plus the bundled
+Universal JIT scripts. On-device JIT and world startup still need testing.
 
 The native iOS app, offline identity tests, standard IPA, and TrollStore package
 built successfully with Xcode 26.6 on GitHub's macOS runner. Build record:
