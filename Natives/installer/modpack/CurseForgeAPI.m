@@ -24,7 +24,11 @@ static NSNumber *CFLoader(NSDictionary *filters) {
     CFTypeRef result = NULL;
     OSStatus status = SecItemCopyMatching((__bridge CFDictionaryRef)query, &result);
     NSData *data = CFBridgingRelease(result);
-    return status == errSecSuccess ? [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] ?: @"" : @"";
+    if (status == errSecSuccess) return [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding] ?: @"";
+    if ([NSUserDefaults.standardUserDefaults boolForKey:@"CurseForgeBundledKeyDisabled"]) return @"";
+    NSString *servicesPath = [NSBundle.mainBundle pathForResource:@"PersonalServices" ofType:@"plist"];
+    NSDictionary *services = servicesPath ? [NSDictionary dictionaryWithContentsOfFile:servicesPath] : nil;
+    return [CFString(services[@"CurseForgeAPIKey"]) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
 }
 + (BOOL)setAPIKey:(NSString *)key error:(NSError **)error {
     key = [key stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
@@ -47,6 +51,8 @@ static NSNumber *CFLoader(NSDictionary *filters) {
         if (error) *error = [NSError errorWithDomain:NSOSStatusErrorDomain code:status userInfo:@{NSLocalizedDescriptionKey: NSLocalizedString(@"content.curseforge.key_error", nil)}];
         return NO;
     }
+    // Removing a key also disables the bundled default until a new key is saved.
+    [NSUserDefaults.standardUserDefaults setBool:!key.length forKey:@"CurseForgeBundledKeyDisabled"];
     [NSNotificationCenter.defaultCenter postNotificationName:@"CurseForgeConfigurationDidChange" object:nil];
     return YES;
 }
@@ -184,3 +190,4 @@ static NSNumber *CFLoader(NSDictionary *filters) {
     return [response isKindOfClass:NSDictionary.class] ? [self.class versionFromFile:response[@"data"]] : nil;
 }
 @end
+
