@@ -137,6 +137,7 @@ add_executable(AngelAuraAmethyst
   external/mach/mach_excServer.c
 
   installer/FabricInstallViewController.m
+  installer/BTAInstallViewController.m
   installer/ForgeInstallViewController.m
   installer/ModpackInstallViewController.m
   installer/ModrinthModsViewController.m
@@ -229,3 +230,4 @@ set_target_properties(AngelAuraAmethyst PROPERTIES
   MACOSX_FRAMEWORK_IDENTIFIER org.cmake.ExecutableTarget
   MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/Info.plist"
 )
+
