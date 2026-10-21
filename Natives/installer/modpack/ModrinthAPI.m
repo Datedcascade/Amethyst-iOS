@@ -136,7 +136,6 @@
 
     PLProfiles *profiles = PLProfiles.current;
 
-    downloader.progress.totalUnitCount = [indexDict[@"files"] count];
     for (NSDictionary *indexFile in indexDict[@"files"]) {
 /*
         if ([indexFile[@"downloads"] count] > 1) {
@@ -152,9 +151,7 @@
         if (task) {
             [downloader.fileList addObject:indexFile[@"path"]];
             [task resume];
-        } else if (!downloader.progress.cancelled) {
-            downloader.progress.completedUnitCount++;
-        } else {
+        } else if (downloader.progress.cancelled) {
             return; // cancelled
         }
     }
@@ -197,3 +194,4 @@
 }
 
 @end
+
