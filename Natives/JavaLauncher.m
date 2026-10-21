@@ -20,6 +20,7 @@
 
 #import "ios_uikit_bridge.h"
 #import "JavaLauncher.h"
+#import "BTAClasspath.h"
 #import "LauncherPreferences.h"
 #import "LWJGLVersions.h"
 #import "MinecraftOptionUtils.h"
@@ -143,6 +144,10 @@ static BOOL versionHasVulkanBackend(NSString *versionId) {
 }
 
 int launchJVM(NSString *username, id launchTarget, int width, int height, int minVersion) {
+    return launchJVMWithArguments(username, launchTarget, width, height, minVersion, nil);
+}
+
+int launchJVMWithArguments(NSString *username, id launchTarget, int width, int height, int minVersion, NSArray<NSString *> *arguments) {
     NSLog(@"[JavaLauncher] Beginning JVM launch");
 
     init_loadDefaultEnv();
@@ -550,12 +555,12 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
         classpath = [NSString stringWithFormat:@"%@/*", librariesPath];
     }
     if (launchJar) {
-        classpath = [classpath stringByAppendingFormat:@":%@", launchTarget];
+        classpath = arguments.count ? [NSString stringWithFormat:@"%@:%@", launchTarget, classpath] : [classpath stringByAppendingFormat:@":%@", launchTarget];
     } else if ([launchTarget[@"amethystGame"] isEqualToString:@"bta"]) {
         // BTA has a different LWJGL 2 compatibility layer. Put it ahead of the
         // bundled LWJGLX classes while retaining Amethyst's iOS LWJGL 3 natives.
-        NSString *bridgePath = [NSString stringWithFormat:@"%s/libraries/com/github/Better-than-Adventure/legacy-lwjgl3/1.0.6/legacy-lwjgl3-1.0.6.jar", getenv("GAME_DIR")];
-        classpath = [bridgePath stringByAppendingFormat:@":%@", classpath];
+        classpath = AMBTASystemClasspath(launchTarget, @(getenv("GAME_DIR")), classpath);
+        NSLog(@"[BTA] Client and compatibility bridge share the system classpath");
     }
     margv[++margc] = "-cp";
     margv[++margc] = classpath.UTF8String;
@@ -572,6 +577,7 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     } else {
         margv[++margc] = [launchTarget UTF8String];
     }
+    if (launchJar) for (NSString *arg in arguments) margv[++margc] = arg.UTF8String;
     //margv[++margc] = "ghidra.GhidraRun";
 
     pJLI_Launch = (JLI_Launch_func *)dlsym(libjli, "JLI_Launch");
