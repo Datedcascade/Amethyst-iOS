@@ -295,6 +295,13 @@ void AWTInputBridge_sendKey(int keycode) {
     self.logOutputView.navController.additionalSafeAreaInsets = self.view.safeAreaInsets;
     [self addChildViewController:self.logOutputView.navController];
     [self.view addSubview:self.logOutputView.navController.view];
+    if (self.launchArguments.count) {
+        // Automatic loader installation has no Swing buttons to interact with.
+        // Show its progress immediately instead of an empty AWT surface.
+        self.ctrlView.hidden = YES;
+        self.logOutputView.navController.topViewController.title = @"Installing required loader";
+        [self.logOutputView actionToggleLogOutput];
+    }
 
     setenv("AME_SKIP_JNI_GLFW", "1", 1);
  
