@@ -314,7 +314,7 @@ void AWTInputBridge_sendKey(int keycode) {
 
     
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        launchJVM(nil, self.filepath, windowWidth, windowHeight, _requiredJavaVersion);
+        launchJVMWithArguments(nil, self.filepath, windowWidth, windowHeight, MAX(self.requiredJavaVersion, self.minimumJavaVersion), self.launchArguments);
         _requiredJavaVersion = 0;
     });
 }
@@ -536,3 +536,4 @@ dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 }
 
 @end
+
