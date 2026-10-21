@@ -30,6 +30,8 @@ jobs:
           "$RUNNER_TEMP/offline-identity-tests"
           xcrun clang -fobjc-arc -framework Foundation tests/DownloadCompletionTests.m -o "$RUNNER_TEMP/download-completion-tests"
           "$RUNNER_TEMP/download-completion-tests"
+          xcrun clang -fobjc-arc -framework Foundation tests/LoaderPlanTests.m -o "$RUNNER_TEMP/loader-plan-tests"
+          "$RUNNER_TEMP/loader-plan-tests"
       - name: Compile native app
         run: gmake -j3 native PLATFORM=2 RELEASE=1
       - name: Test BTA metadata
@@ -38,6 +40,13 @@ jobs:
           python3 tests/test_personalize_ipa.py
       - name: Compile Java components
         run: gmake -j3 java PLATFORM=2 RELEASE=1
+      - name: Select Java for installer checks
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify official loader APIs and BTA class visibility
+        run: python3 tests/verify_loader_installers.py
       - name: Build iOS IPA
         run: gmake -j3 package PLATFORM=2 RELEASE=1
       - name: Upload IPA
