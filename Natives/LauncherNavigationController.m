@@ -365,6 +365,7 @@ static void *ProgressObserverContext = &ProgressObserverContext;
     struct timeval tv;
     gettimeofday(&tv, NULL); 
     NSInteger completedUnitCount = self.task.progress.totalUnitCount * self.task.progress.fractionCompleted;
+    progress.totalUnitCount = self.task.progress.totalUnitCount;
     progress.completedUnitCount = completedUnitCount;
     if (lastSecTime < tv.tv_sec) {
         CGFloat currentTime = tv.tv_sec + tv.tv_usec / 1000000.0;
@@ -379,7 +380,7 @@ static void *ProgressObserverContext = &ProgressObserverContext;
     dispatch_async(dispatch_get_main_queue(), ^{
         self.progressText.text = progress.localizedAdditionalDescription;
 
-        if (!progress.finished) return;
+        if (!self.task.progress.finished || self.task.progress.cancelled) return;
         [self.progressVC dismissModalViewControllerAnimated:NO];
 
         self.progressViewMain.observedProgress = nil;
