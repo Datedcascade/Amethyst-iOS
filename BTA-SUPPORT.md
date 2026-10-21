@@ -32,3 +32,9 @@ Remove Key disables the bundled default too. Builds without the private file
 continue to require entering a key in Settings. Only the locally prepared
 personal IPA includes the supplied default; public CI artifacts do not.
 
+To prepare a personal IPA from an extracted CI download, keep the private plist
+locally and run `python3 scripts/personalize_ipa.py original.ipa personal.ipa`.
+Import the resulting package into LiveContainer or sign it normally with your
+sideloading tool. The script preserves every original ZIP entry byte-for-byte
+and adds the configuration; it does not provide an Apple signing identity.
+
