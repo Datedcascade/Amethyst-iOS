@@ -6,6 +6,7 @@
 @property NSProgress *progress, *textProgress;
 @property NSMutableArray *fileList, *progressList;
 @property NSMutableDictionary* metadata;
+@property(nonatomic) NSMutableDictionary *loaderInstallRequest;
 @property(nonatomic, copy) void(^handleError)(void);
 
 - (NSURLSessionDownloadTask *)createDownloadTask:(NSString *)url size:(NSUInteger)size sha:(NSString *)sha altName:(NSString *)altName toPath:(NSString *)path;
@@ -15,3 +16,4 @@
 - (void)downloadModpackFromAPI:(ModpackAPI *)api detail:(NSDictionary *)modDetail atIndex:(NSUInteger)selectedVersion;
 
 @end
+
