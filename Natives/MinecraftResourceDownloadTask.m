@@ -6,6 +6,7 @@
 #import "LauncherNavigationController.h"
 #import "LauncherPreferences.h"
 #import "MinecraftResourceDownloadTask.h"
+#import "DownloadCompletion.h"
 #import "MinecraftResourceUtils.h"
 #import "ios_uikit_bridge.h"
 #import "utils.h"
@@ -30,6 +31,7 @@
 
 // Add file to the queue
 - (NSURLSessionDownloadTask *)createDownloadTask:(NSString *)url size:(NSUInteger)size sha:(NSString *)sha altName:(NSString *)altName toPath:(NSString *)path success:(void (^)())success {
+    if (![sha isKindOfClass:NSString.class]) sha = nil;
     BOOL fileExists = [NSFileManager.defaultManager fileExistsAtPath:path];
     // logSuccess?
     if (fileExists && [self checkSHA:sha forFile:path altName:altName]) {
@@ -38,6 +40,12 @@
     }
 
     NSString *name = altName ?: path.lastPathComponent;
+    // Network progress can reach 100% before AFNetworking moves/verifies the
+    // file. Hold one unit until this task's completion callback has finished.
+    NSProgress *fileReady = AMHoldFileCompletion(self.progress);
+    @synchronized (self) {
+        self.textProgress.totalUnitCount = self.progress.totalUnitCount;
+    }
     NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
     __block NSProgress *progress;
     __block NSURLSessionDownloadTask *task = [self.manager downloadTaskWithRequest:request progress:nil
@@ -61,6 +69,7 @@
         } else {
             progress.totalUnitCount = progress.completedUnitCount;
             if (success) success();
+            fileReady.completedUnitCount = 1;
         }
     }];
 
@@ -84,9 +93,11 @@
         progress.totalUnitCount = fileSize;
     }
     [self.progressList addObject:progress];
-    [self.progress addChild:progress withPendingUnitCount:fileSize];
-    self.progress.totalUnitCount += fileSize;
-    self.textProgress.totalUnitCount = self.progress.totalUnitCount;
+    @synchronized (self) {
+        self.progress.totalUnitCount += fileSize;
+        [self.progress addChild:progress withPendingUnitCount:fileSize];
+        self.textProgress.totalUnitCount = self.progress.totalUnitCount;
+    }
 }
 
 - (void)downloadVersionMetadata:(NSDictionary *)version success:(void (^)())success {
@@ -122,6 +133,13 @@
     if (!version) {
         // This is likely local version, check if json exists and has inheritsFrom
         NSMutableDictionary *json = parseJSONFromFile(path);
+        if ([json[@"amethystGame"] isEqual:@"bta"] && [json[@"id"] isEqual:@"bta-8.0.1"]) {
+            // Refresh launcher-owned dependency metadata for existing BTA profiles.
+            NSString *bundled = [NSBundle.mainBundle pathForResource:@"bta-8.0.1" ofType:@"json" inDirectory:@"bta"];
+            NSData *data = [NSData dataWithContentsOfFile:bundled];
+            if (data) [data writeToFile:path atomically:YES];
+            json = parseJSONFromFile(path);
+        }
         if (json[@"NSErrorObject"]) {
             [self finishDownloadWithErrorString:[json[@"NSErrorObject"] localizedDescription]];
             return;
@@ -269,13 +287,14 @@
     NSString *url = modDetail[@"versionUrls"][selectedVersion];
     NSUInteger size = [modDetail[@"versionSizes"][selectedVersion] unsignedLongLongValue];
     NSString *sha = modDetail[@"versionHashes"][selectedVersion];
-    NSString *name = [[modDetail[@"title"] lowercaseString] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceCharacterSet];
-    name = [name stringByReplacingOccurrencesOfString:@" " withString:@"_"];
+    NSString *name = NSUUID.UUID.UUIDString;
     NSString *packagePath = [NSTemporaryDirectory() stringByAppendingFormat:@"/%@.zip", name];
 
     NSURLSessionDownloadTask *task = [self createDownloadTask:url size:size sha:sha altName:nil toPath:packagePath success:^{
-        NSString *path = [NSString stringWithFormat:@"%s/custom_gamedir/%@", getenv("GAME_DIR"), name];
+        NSString *path = [NSString stringWithFormat:@"%s/instances/%@/custom_gamedir/%@", getenv("AME_HOME"), getPrefObject(@"general.game_directory"), name];
         [api downloader:self submitDownloadTasksFromPackage:packagePath toPath:path];
+        // Release discovery only after the manifest, overrides and profile are ready.
+        if (!self.progress.cancelled) self.progress.completedUnitCount++;
     }];
     [task resume];
 }
@@ -357,3 +376,4 @@
 }
 
 @end
+
