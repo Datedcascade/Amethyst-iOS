@@ -551,6 +551,11 @@ int launchJVM(NSString *username, id launchTarget, int width, int height, int mi
     }
     if (launchJar) {
         classpath = [classpath stringByAppendingFormat:@":%@", launchTarget];
+    } else if ([launchTarget[@"amethystGame"] isEqualToString:@"bta"]) {
+        // BTA has a different LWJGL 2 compatibility layer. Put it ahead of the
+        // bundled LWJGLX classes while retaining Amethyst's iOS LWJGL 3 natives.
+        NSString *bridgePath = [NSString stringWithFormat:@"%s/libraries/com/github/Better-than-Adventure/legacy-lwjgl3/1.0.6/legacy-lwjgl3-1.0.6.jar", getenv("GAME_DIR")];
+        classpath = [bridgePath stringByAppendingFormat:@":%@", classpath];
     }
     margv[++margc] = "-cp";
     margv[++margc] = classpath.UTF8String;
