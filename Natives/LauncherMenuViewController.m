@@ -140,13 +140,16 @@
     [self tableView:self.tableView didSelectRowAtIndexPath:indexPath];
     self.lastSelectedIndex = 1;
     
-    if (getEntitlementValue(@"get-task-allow")) {
+    if (getEntitlementValue(@"get-task-allow") || getenv("LC_HOME_PATH")) {
         [self displayProgress:localize(@"login.jit.checking", nil)];
         if (isJITEnabled(false)) {
             [self displayProgress:localize(@"login.jit.enabled", nil)];
             [self displayProgress:nil];
         } else if (@available(iOS 17.0, *)) {
             // enabling JIT for 17.0+ is done when we actually launch the game
+            // Do not leave an endless checking indicator for a deferred check.
+            [self displayProgress:@"JIT will be checked when launching"];
+            [self displayProgress:nil];
         } else {
             [self enableJITWithAltKit];
         }
@@ -438,3 +441,4 @@
 }
 
 @end
+
