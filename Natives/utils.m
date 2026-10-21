@@ -56,8 +56,10 @@ BOOL isJITEnabled(BOOL checkCSFlags) {
         return YES;
     }
 
-    int flags;
-    csops(getpid(), 0, &flags, sizeof(flags));
+    int flags = 0;
+    if (csops(getpid(), 0, &flags, sizeof(flags)) != 0) {
+        return NO;
+    }
     if ((flags & CS_DEBUGGED) == 0) {
         return NO;
     }
@@ -304,3 +306,4 @@ JITFlags DeviceGetJITFlags(BOOL refresh) {
 BOOL DeviceHasJITFlags(JITFlags flags) {
     return (DeviceGetJITFlags(NO) & flags) == flags;
 }
+
