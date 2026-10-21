@@ -5,21 +5,20 @@
 #import "UIKit+hook.h"
 #import "WFWorkflowProgressView.h"
 #import "modpack/ModrinthAPI.h"
+#import "modpack/CurseForgeAPI.h"
 #import "config.h"
 #import "ios_uikit_bridge.h"
 #import "utils.h"
 #include <dlfcn.h>
-
-#define kCurseForgeGameIDMinecraft 432
-#define kCurseForgeClassIDModpack 4471
-#define kCurseForgeClassIDMod 6
 
 @interface ModpackInstallViewController()<UIContextMenuInteractionDelegate>
 @property(nonatomic) UISearchController *searchController;
 @property(nonatomic) UIMenu *currentMenu;
 @property(nonatomic) NSMutableArray *list;
 @property(nonatomic) NSMutableDictionary *filters;
-@property ModrinthAPI *modrinth;
+@property ModpackAPI *api;
+@property NSUInteger searchGeneration;
+@property BOOL loading;
 @end
 
 @implementation ModpackInstallViewController
@@ -27,12 +26,15 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    //NSString *curseforgeAPIKey = CONFIG_CURSEFORGE_API_KEY;
     self.searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
     self.searchController.searchResultsUpdater = self;
     self.searchController.obscuresBackgroundDuringPresentation = NO;
     self.navigationItem.searchController = self.searchController;
-    self.modrinth = [ModrinthAPI new];
+    self.api = [ModrinthAPI new];
+    UISegmentedControl *providers = [[UISegmentedControl alloc] initWithItems:@[@"Modrinth", @"CurseForge"]];
+    providers.selectedSegmentIndex = 0;
+    [providers addTarget:self action:@selector(providerChanged:) forControlEvents:UIControlEventValueChanged];
+    self.navigationItem.titleView = providers;
     self.filters = @{
         @"isModpack": @(YES),
         @"name": @" "
@@ -41,23 +43,37 @@
     [self updateSearchResults];
 }
 
+- (void)providerChanged:(UISegmentedControl *)control {
+    self.api = control.selectedSegmentIndex == 1 ? [CurseForgeAPI new] : [ModrinthAPI new];
+    self.filters[@"name"] = @"\n";
+    self.list = [NSMutableArray new];
+    [self.tableView reloadData];
+    [self updateSearchResults];
+}
+
 - (void)loadSearchResultsWithPrevList:(BOOL)prevList {
-    NSString *name = self.searchController.searchBar.text;
+    NSString *name = self.searchController.searchBar.text ?: @"";
+    if (prevList && self.loading) return;
     if (!prevList && [self.filters[@"name"] isEqualToString:name]) {
         return;
     }
 
+    self.filters[@"name"] = name;
+    NSDictionary *filters = self.filters.copy;
+    ModpackAPI *api = self.api;
+    NSMutableArray *previous = prevList ? self.list.mutableCopy : nil;
+    NSUInteger generation = ++self.searchGeneration;
     [self switchToLoadingState];
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        self.filters[@"name"] = name;
-        self.list = [self.modrinth searchModWithFilters:self.filters previousPageResult:prevList ? self.list : nil];
+        NSMutableArray *result = [api searchModWithFilters:filters previousPageResult:previous];
         dispatch_async(dispatch_get_main_queue(), ^{
-            if (self.list) {
-                [self switchToReadyState];
+            if (generation != self.searchGeneration) return;
+            self.list = result;
+            [self switchToReadyState];
+            if (result) {
                 [self.tableView reloadData];
             } else {
-                showDialog(localize(@"Error", nil), self.modrinth.lastError.localizedDescription);
-                [self actionClose];
+                showDialog(localize(@"Error", nil), api.lastError.localizedDescription ?: @"Unable to search modpacks.");
             }
         });
     });
@@ -73,10 +89,13 @@
 }
 
 - (void)actionClose {
+    self.searchGeneration++;
+    [NSObject cancelPreviousPerformRequestsWithTarget:self];
     [self.navigationController dismissViewControllerAnimated:YES completion:nil];
 }
 
 - (void)switchToLoadingState {
+    self.loading = YES;
     UIActivityIndicatorView *indicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:indicator];
     [indicator startAnimating];
@@ -85,6 +104,7 @@
 }
 
 - (void)switchToReadyState {
+    self.loading = NO;
     UIActivityIndicatorView *indicator = (id)self.navigationItem.rightBarButtonItem.customView;
     [indicator stopAnimating];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemClose target:self action:@selector(actionClose)];
@@ -132,7 +152,7 @@
     UIImage *fallbackImage = [UIImage imageNamed:@"DefaultProfile"];
     [cell.imageView setImageWithURL:[NSURL URLWithString:item[@"imageUrl"]] placeholderImage:fallbackImage];
 
-    if (!self.modrinth.reachedLastPage && indexPath.row == self.list.count-1) {
+    if (!self.api.reachedLastPage && indexPath.row == self.list.count-1) {
         [self loadSearchResultsWithPrevList:YES];
     }
 
@@ -141,6 +161,11 @@
 
 - (void)showDetails:(NSDictionary *)details atIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
+    if (![details[@"versionNames"] count]) {
+        showDialog(localize(@"Error", nil), @"No downloadable client modpack files are available for this project.");
+        return;
+    }
+    ModpackAPI *api = self.api;
 
     NSMutableArray<UIAction *> *menuItems = [[NSMutableArray alloc] init];
     [details[@"versionNames"] enumerateObjectsUsingBlock:
@@ -157,7 +182,7 @@
             [self actionClose];
             NSString *tmpIconPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"icon.png"];
                 [UIImagePNGRepresentation([cell.imageView.image _imageWithSize:CGSizeMake(40, 40)]) writeToFile:tmpIconPath atomically:YES];
-            [self.modrinth installModpackFromDetail:self.list[indexPath.row] atIndex:i];
+            [api installModpackFromDetail:details atIndex:i];
         }]];
     }];
 
@@ -168,7 +193,10 @@
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    NSDictionary *item = self.list[indexPath.row];
+    NSMutableDictionary *item = [self.list[indexPath.row] mutableCopy];
+    self.list[indexPath.row] = item;
+    ModpackAPI *api = self.api;
+    NSUInteger generation = self.searchGeneration;
     if ([item[@"versionDetailsLoaded"] boolValue]) {
         [self showDetails:item atIndexPath:indexPath];
         return;
@@ -176,16 +204,18 @@
     [tableView deselectRowAtIndexPath:indexPath animated:NO];
     [self switchToLoadingState];
 dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        [self.modrinth loadDetailsOfMod:self.list[indexPath.row]];
+        [api loadDetailsOfMod:item];
         dispatch_async(dispatch_get_main_queue(), ^{
+            if (generation != self.searchGeneration || api != self.api) return;
             [self switchToReadyState];
             if ([item[@"versionDetailsLoaded"] boolValue]) {
                 [self showDetails:item atIndexPath:indexPath];
             } else {
-                showDialog(localize(@"Error", nil), self.modrinth.lastError.localizedDescription);
+                showDialog(localize(@"Error", nil), api.lastError.localizedDescription ?: @"Unable to load modpack versions.");
             }
         });
     });
 }
 
 @end
+
