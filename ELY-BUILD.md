@@ -115,6 +115,13 @@ for manual import and prompts for a restart. It does not send a guest bundle ID
 to an externally installed StikDebug: LiveContainer handles the host identity,
 script and second-container handoff before starting the guest.
 
+On iOS 17+, the initial account-menu JIT check now stops its spinner and explains
+that JIT is checked at launch. Previously it left "Checking for JIT" visible
+even though the check was deferred. LiveContainer guests also use this flow
+when the guest does not report `get-task-allow` itself. TXM detection now first
+checks the device tree, matching LiveContainer, instead of relying solely on
+an OS-version heuristic that can misclassify older hardware.
+
 In LiveContainer Settings > JIT, select **StikDebug (Another LiveContainer)**.
 Import the pairing file into StikDebug, convert StikDebug to a shared app,
 connect LocalDevVPN, and keep a second LiveContainer free. Restart Amethyst's
