@@ -43,7 +43,7 @@
     // Network progress can reach 100% before AFNetworking moves/verifies the
     // file. Hold one unit until this task's completion callback has finished.
     NSProgress *fileReady = AMHoldFileCompletion(self.progress);
-    @synchronized (self) {
+    @synchronized (self.progress) {
         self.textProgress.totalUnitCount = self.progress.totalUnitCount;
     }
     NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
@@ -93,7 +93,7 @@
         progress.totalUnitCount = fileSize;
     }
     [self.progressList addObject:progress];
-    @synchronized (self) {
+    @synchronized (self.progress) {
         self.progress.totalUnitCount += fileSize;
         [self.progress addChild:progress withPendingUnitCount:fileSize];
         self.textProgress.totalUnitCount = self.progress.totalUnitCount;
