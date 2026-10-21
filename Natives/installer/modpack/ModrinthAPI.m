@@ -3,6 +3,8 @@
 #import "utils.h"
 #import "ModrinthSearchFilters.h"
 #import "PLProfiles.h"
+#import "ModpackLoaderInstaller.h"
+#import "DownloadCompletion.h"
 
 @implementation ModrinthAPI
 
@@ -120,6 +122,18 @@
 }
 
 - (void)downloader:(MinecraftResourceDownloadTask *)downloader submitDownloadTasksFromPackage:(NSString *)packagePath toPath:(NSString *)destPath {
+    NSProgress *ready = AMHoldFileCompletion(downloader.progress);
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        @try {
+            [self downloader:downloader installPackage:packagePath toPath:destPath];
+            if (!downloader.progress.cancelled) ready.completedUnitCount = 1;
+        } @catch (NSException *exception) {
+            [downloader finishDownloadWithErrorString:@"The Modrinth modpack manifest is malformed."];
+        }
+    });
+}
+
+- (void)downloader:(MinecraftResourceDownloadTask *)downloader installPackage:(NSString *)packagePath toPath:(NSString *)destPath {
     NSError *error;
     UZKArchive *archive = [[UZKArchive alloc] initWithPath:packagePath error:&error];
     if (error) {
@@ -134,9 +148,14 @@
         return;
     }
 
-    PLProfiles *profiles = PLProfiles.current;
+    NSDictionary *depInfo = [ModpackLoaderInstaller prepareDependencies:indexDict[@"dependencies"] downloader:downloader error:&error];
+    if (!depInfo || error) {
+        [downloader finishDownloadWithErrorString:error.localizedDescription ?: @"Unable to prepare the pack's loader."];
+        return;
+    }
 
     for (NSDictionary *indexFile in indexDict[@"files"]) {
+        if ([indexFile[@"env"][@"client"] isEqual:@"unsupported"]) continue;
 /*
         if ([indexFile[@"downloads"] count] > 1) {
             [downloader finishDownloadWithErrorString:[NSString stringWithFormat:@"Unhandled multiple files download %@", indexFile[@"downloads"]]];
@@ -146,6 +165,10 @@
         NSString *url = [indexFile[@"downloads"] firstObject];
         NSString *sha = indexFile[@"hashes"][@"sha1"];
         NSString *path = [destPath stringByAppendingPathComponent:indexFile[@"path"]];
+        if (![path.stringByStandardizingPath hasPrefix:[destPath.stringByStandardizingPath stringByAppendingString:@"/"]] || [indexFile[@"path"] containsString:@"\\"]) {
+            [downloader finishDownloadWithErrorString:@"The modpack contains an unsafe file path."];
+            return;
+        }
         NSUInteger size = [indexFile[@"fileSize"] unsignedLongLongValue];
         NSURLSessionDownloadTask *task = [downloader createDownloadTask:url size:size sha:sha altName:nil toPath:path];
         if (task) {
@@ -172,17 +195,15 @@
     [NSFileManager.defaultManager removeItemAtPath:packagePath error:nil];
 
     // Download dependency client json (if available)
-    NSDictionary<NSString *, NSString *> *depInfo = [ModpackUtils infoForDependencies:indexDict[@"dependencies"]];
     if (depInfo[@"json"]) {
         NSString *jsonPath = [NSString stringWithFormat:@"%1$s/versions/%2$@/%2$@.json", getenv("GAME_DIR"), depInfo[@"id"]];
         NSURLSessionDownloadTask *task = [downloader createDownloadTask:depInfo[@"json"] size:0 sha:nil altName:nil toPath:jsonPath];
         [task resume];
     }
-    // TODO: automation for Forge
 
     // Create profile
     NSString *tmpIconPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"icon.png"];
-    profiles.profiles[indexDict[@"name"]] = @{
+    NSMutableDictionary *profile = @{
         @"gameDir": [NSString stringWithFormat:@"./custom_gamedir/%@", destPath.lastPathComponent],
         @"name": indexDict[@"name"],
         @"lastVersionId": depInfo[@"id"],
@@ -190,7 +211,14 @@
             [[NSData dataWithContentsOfFile:tmpIconPath]
             base64EncodedStringWithOptions:0]]
     }.mutableCopy;
-    profiles.selectedProfileName = indexDict[@"name"];
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        if (downloader.loaderInstallRequest) downloader.loaderInstallRequest[@"profile"] = profile;
+        else {
+            PLProfiles *profiles = PLProfiles.current;
+            profiles.profiles[profile[@"name"]] = profile;
+            profiles.selectedProfileName = profile[@"name"];
+        }
+    });
 }
 
 @end
