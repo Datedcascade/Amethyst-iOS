@@ -23,6 +23,8 @@ class BTAManifestTests(unittest.TestCase):
                 artifact = lib["downloads"]["artifact"]
                 self.assertTrue(artifact["url"].startswith("https://"))
                 self.assertNotIn("..", artifact["path"].split("/"))
+                self.assertGreater(artifact["size"], 0)
+                self.assertRegex(artifact["sha1"], r"^[0-9a-f]{40}$")
         vanilla = self.manifest["libraries"][-1]["downloads"]["artifact"]
         self.assertEqual(vanilla["sha1"], "43db9b498cb67058d2e12d394e6507722e71bb45")
 
