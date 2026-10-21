@@ -31,7 +31,9 @@ jobs:
       - name: Compile native app
         run: gmake -j3 native PLATFORM=2 RELEASE=1
       - name: Test BTA metadata
-        run: python3 tests/test_bta_manifest.py
+        run: |
+          python3 tests/test_bta_manifest.py
+          python3 tests/test_personalize_ipa.py
       - name: Build iOS IPA
         run: gmake -j3 package PLATFORM=2 RELEASE=1
       - name: Upload IPA
