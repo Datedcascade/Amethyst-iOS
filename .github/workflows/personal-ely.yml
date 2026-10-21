@@ -28,6 +28,8 @@ jobs:
         run: |
           xcrun clang -fobjc-arc -framework Foundation tests/OfflineIdentityTests.m -o "$RUNNER_TEMP/offline-identity-tests"
           "$RUNNER_TEMP/offline-identity-tests"
+          xcrun clang -fobjc-arc -framework Foundation tests/DownloadCompletionTests.m -o "$RUNNER_TEMP/download-completion-tests"
+          "$RUNNER_TEMP/download-completion-tests"
       - name: Compile native app
         run: gmake -j3 native PLATFORM=2 RELEASE=1
       - name: Test BTA metadata
