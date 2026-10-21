@@ -1,5 +1,15 @@
 # Better than Adventure and personal service defaults
 
+Build and package checks passed for source commit
+`bc0f8469dd0c375915eee1640dbccc54196b0b09`:
+https://github.com/Datedcascade/Amethyst-iOS/actions/runs/39542044680
+
+The verified personal IPA and TrollStore packages are in
+`artifacts/bta-personal/`, alongside SHA-256 checksums and installation notes.
+Both original CI archives matched GitHub's digests. Checks confirmed the arm64
+executable, BTA installer and profile metadata, launcher classpath change, and
+private configuration; personalization preserved the original app entries.
+
 Profiles > + > Better than Adventure! installs the official BTA 8.0.1 package.
 The installer checks its SHA-256, extracts only `jarmods/bta.jar`, and creates a
 Java 17 profile with a separate `bta-8.0.1` game folder. Existing worlds are not
